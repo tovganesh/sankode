@@ -16,16 +16,25 @@ pub enum ParseError {
     UnexpectedEof,
     #[error("अमान्यं व्यञ्जनम् (Invalid expression) at {0}")]
     InvalidExpression(Span),
+    #[error("वाक्यरचनायां गभीरतासीमोल्लङ्घनम् (Parser recursion limit exceeded) at {0}")]
+    RecursionLimitExceeded(Span),
 }
 
 pub struct Parser {
     tokens: Vec<Token>,
     cursor: usize,
+    pub recursion_depth: usize,
+    pub max_recursion_depth: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, cursor: 0 }
+        Self {
+            tokens,
+            cursor: 0,
+            recursion_depth: 0,
+            max_recursion_depth: 256,
+        }
     }
 
     fn current(&self) -> &Token {
@@ -484,7 +493,13 @@ impl Parser {
     }
 
     pub fn parse_expression(&mut self) -> Result<Expr, ParseError> {
-        self.parse_equality()
+        if self.recursion_depth >= self.max_recursion_depth {
+            return Err(ParseError::RecursionLimitExceeded(self.current().span));
+        }
+        self.recursion_depth += 1;
+        let res = self.parse_equality();
+        self.recursion_depth -= 1;
+        res
     }
 
     fn parse_equality(&mut self) -> Result<Expr, ParseError> {
@@ -874,6 +889,32 @@ mod tests {
                 assert_eq!(f.body.len(), 3);
             }
             _ => panic!("Expected function"),
+        }
+    }
+
+    #[test]
+    fn test_parser_recursion_limit() {
+        let mut code = String::from("क्रिया मुख्य() -> रिक्त
+ मान क = ");
+        for _ in 0..100 {
+            code.push('(');
+        }
+        code.push_str("५");
+        for _ in 0..100 {
+            code.push(')');
+        }
+        code.push_str("।
+इति
+");
+
+        let mut lexer = Lexer::new(&code);
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        parser.max_recursion_depth = 50;
+        let err = parser.parse_program().unwrap_err();
+        match err {
+            ParseError::RecursionLimitExceeded(_) => {}
+            other => panic!("Expected RecursionLimitExceeded, got {:?}", other),
         }
     }
 }

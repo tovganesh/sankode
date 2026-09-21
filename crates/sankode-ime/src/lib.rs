@@ -26,7 +26,7 @@ impl Transliterator {
 
     /// Transliterates an entire string from phonetic Roman script to Devanagari.
     pub fn to_devanagari(input: &str) -> String {
-        let mut output = String::new();
+        let mut output = String::with_capacity(input.len() * 2);
         let chars: Vec<char> = input.chars().collect();
         let mut i = 0;
 

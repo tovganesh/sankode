@@ -44,6 +44,22 @@
 
 ---
 
+## 📖 Language Tutorial & Documentation
+
+Start learning Sankode in minutes with our comprehensive guide:
+👉 **[Read the Complete Sankode Tutorial (सङ्कोड-बोधकः)](docs/TUTORIAL.md)**
+
+It covers:
+- **Phonetic Typing**: Write Devanagari using standard English keyboard transliteration (`sankode-ime`).
+- **Syntax**: Pure Devanagari numerals (`०`-`९`), zero curly braces (`{ }`), statement Dandas (`।`).
+- **Data Types & Variables**: `पूर्ण६४`, `अंश६४`, `सूत्र`, `द्वैध`, `रिक्त`, immutable `मान` vs mutable `विकार्य`.
+- **Functions & Control Flow**: `क्रिया`, `प्रति`, `यदि` / `अन्यथा`, and `यावत्` loops.
+- **Structures & Methods**: `संरचना`, `विधान`, `स्व`, and `चलऋण स्व`.
+- **Affine Ownership**: Rust-like move semantics, immutable borrowing (`ऋण`), and mutable borrowing (`चलऋण`).
+- **Dual Runtime & Studio**: Compiled `sankode`, dynamic `sanskipt` REPL, and web `sankode-studio`.
+
+---
+
 ## 🚀 Quick Start
 
 ### Building from Source
@@ -86,6 +102,7 @@ sankode/
 │   ├── sanskipt/           # Python-inspired dynamic scripting runtime & REPL
 │   └── sankode-studio/     # Embedded web-based visual IDE & dev server
 ├── docs/
+│   ├── TUTORIAL.md             # Complete language tutorial & feature reference
 │   └── implementation_plan.md  # Detailed language specification & design
 └── examples/
     ├── नमस्ते_जगत्.सङ्     # Hello World in pure Devanagari
