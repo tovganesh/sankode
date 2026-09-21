@@ -62,6 +62,10 @@ cargo run -p sanskipt -- examples/गणना_लिपि.सङ्स्क�
 
 # Launch the Sanskipt interactive REPL
 cargo run -p sanskipt
+
+# Launch the Sankode Studio IDE (वेधशाला) in your browser
+cargo run -p sankode-studio
+# OR via CLI: cargo run -p sankode-cli -- studio
 ```
 
 ---
@@ -77,9 +81,10 @@ sankode/
 │   ├── sankode-semantics/  # Static type checker & immutability analysis
 │   ├── sankode-borrowck/   # Affine ownership, move semantics & borrow checker
 │   ├── sankode-eval/       # Execution engine & tree-walk runtime
-│   ├── sankode-cli/        # Sankode CLI (`sankode run`, `sankode check`, `sankode repl`)
+│   ├── sankode-cli/        # Sankode CLI (`run`, `check`, `repl`, `studio`)
 │   ├── sankode-ime/        # Phonetic transliteration engine (Roman to Devanagari)
-│   └── sanskipt/           # Python-inspired dynamic scripting runtime & REPL
+│   ├── sanskipt/           # Python-inspired dynamic scripting runtime & REPL
+│   └── sankode-studio/     # Embedded web-based visual IDE & dev server
 ├── docs/
 │   └── implementation_plan.md  # Detailed language specification & design
 └── examples/
