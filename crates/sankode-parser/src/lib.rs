@@ -1,6 +1,6 @@
 use sankode_core::{
-    BinaryOp, Expr, ExprKind, FunctionDecl, Param, Program, Span, Statement, Token, TokenKind,
-    TopLevelItem, TypeAnnotation, UnaryOp,
+    BinaryOp, Expr, ExprKind, FieldDecl, FunctionDecl, ImplBlock, Param, Program, Span, Statement,
+    StructDecl, Token, TokenKind, TopLevelItem, TypeAnnotation, UnaryOp,
 };
 use thiserror::Error;
 
@@ -75,6 +75,14 @@ impl Parser {
                     let func = self.parse_function()?;
                     items.push(TopLevelItem::Function(func));
                 }
+                TokenKind::Samracana => {
+                    let s = self.parse_struct()?;
+                    items.push(TopLevelItem::Struct(s));
+                }
+                TokenKind::Vidhana => {
+                    let imp = self.parse_impl()?;
+                    items.push(TopLevelItem::Impl(imp));
+                }
                 TokenKind::DoubleDanda => {
                     self.advance();
                 }
@@ -86,6 +94,105 @@ impl Parser {
         }
 
         Ok(Program { items })
+    }
+
+    fn parse_struct(&mut self) -> Result<StructDecl, ParseError> {
+        let sam_tok = self.consume(TokenKind::Samracana, "संरचना")?;
+        let name = match self.peek_kind() {
+            TokenKind::Identifier(id) => {
+                let id = id.clone();
+                self.advance();
+                id
+            }
+            _ => {
+                let cur = self.current();
+                return Err(ParseError::UnexpectedToken {
+                    expected: "संरचना-नाम (Struct name)".to_string(),
+                    found: cur.kind.clone(),
+                    span: cur.span,
+                });
+            }
+        };
+
+        let mut fields = Vec::new();
+        while !self.check(&TokenKind::Iti) && !self.check(&TokenKind::Eof) {
+            let f_span = self.current().span;
+            let f_name = match self.peek_kind() {
+                TokenKind::Identifier(id) => {
+                    let id = id.clone();
+                    self.advance();
+                    id
+                }
+                _ => {
+                    let cur = self.current();
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "क्षेत्र-नाम (Field name)".to_string(),
+                        found: cur.kind.clone(),
+                        span: cur.span,
+                    });
+                }
+            };
+            self.consume(TokenKind::Colon, ":")?;
+            let type_ann = self.parse_type_annotation()?;
+            if self.check(&TokenKind::Danda) {
+                self.advance();
+            }
+            fields.push(FieldDecl {
+                name: f_name,
+                type_ann,
+                span: f_span,
+            });
+        }
+
+        let end_tok = self.consume(TokenKind::Iti, "इति")?;
+        Ok(StructDecl {
+            name,
+            fields,
+            span: sam_tok.span.merge(end_tok.span),
+        })
+    }
+
+    fn parse_impl(&mut self) -> Result<ImplBlock, ParseError> {
+        let vid_tok = self.consume(TokenKind::Vidhana, "विधान")?;
+        let target = match self.peek_kind() {
+            TokenKind::Identifier(id) => {
+                let id = id.clone();
+                self.advance();
+                id
+            }
+            _ => {
+                let cur = self.current();
+                return Err(ParseError::UnexpectedToken {
+                    expected: "विधान-लक्ष्य-नाम (Target struct name)".to_string(),
+                    found: cur.kind.clone(),
+                    span: cur.span,
+                });
+            }
+        };
+
+        let mut methods = Vec::new();
+        while !self.check(&TokenKind::Iti) && !self.check(&TokenKind::Eof) {
+            if self.check(&TokenKind::Kriya) {
+                let method = self.parse_function()?;
+                methods.push(method);
+            } else if self.check(&TokenKind::DoubleDanda) {
+                self.advance();
+            } else {
+                let cur = self.current();
+                return Err(ParseError::UnexpectedToken {
+                    expected: "क्रिया (Method declaration)".to_string(),
+                    found: cur.kind.clone(),
+                    span: cur.span,
+                });
+            }
+        }
+
+        let end_tok = self.consume(TokenKind::Iti, "इति")?;
+        Ok(ImplBlock {
+            target,
+            methods,
+            span: vid_tok.span.merge(end_tok.span),
+        })
     }
 
     fn parse_function(&mut self) -> Result<FunctionDecl, ParseError> {
@@ -108,25 +215,47 @@ impl Parser {
             }
         };
 
-        // Parameter list: (p1: T1, p2: T2)
+        // Parameter list: (p1: T1, p2: T2) or (स्व, ...) or (ऋण स्व, ...) or (चलऋण स्व, ...)
         self.consume(TokenKind::LParen, "(")?;
         let mut params = Vec::new();
         if !self.check(&TokenKind::RParen) {
             loop {
                 let p_span = self.current().span;
-                let p_name = match self.advance().kind.clone() {
-                    TokenKind::Identifier(id) => id,
-                    other => {
-                        return Err(ParseError::UnexpectedToken {
-                            expected: "तर्क-नाम (Parameter name)".to_string(),
-                            found: other,
-                            span: p_span,
-                        })
-                    }
-                };
+                let (p_name, type_ann) = if self.check(&TokenKind::Rna)
+                    && self.cursor + 1 < self.tokens.len()
+                    && matches!(self.tokens[self.cursor + 1].kind, TokenKind::Identifier(ref id) if id == "स्व")
+                {
+                    self.advance(); // consume Rna
+                    self.advance(); // consume स्व
+                    ("स्व".to_string(), TypeAnnotation::Reference(Box::new(TypeAnnotation::Simple("स्व".to_string()))))
+                } else if self.check(&TokenKind::CalaRna)
+                    && self.cursor + 1 < self.tokens.len()
+                    && matches!(self.tokens[self.cursor + 1].kind, TokenKind::Identifier(ref id) if id == "स्व")
+                {
+                    self.advance(); // consume CalaRna
+                    self.advance(); // consume स्व
+                    ("स्व".to_string(), TypeAnnotation::MutReference(Box::new(TypeAnnotation::Simple("स्व".to_string()))))
+                } else if matches!(self.peek_kind(), TokenKind::Identifier(ref id) if id == "स्व")
+                    && (self.cursor + 1 >= self.tokens.len() || self.tokens[self.cursor + 1].kind != TokenKind::Colon)
+                {
+                    self.advance(); // consume स्व
+                    ("स्व".to_string(), TypeAnnotation::Simple("स्व".to_string()))
+                } else {
+                    let p_name = match self.advance().kind.clone() {
+                        TokenKind::Identifier(id) => id,
+                        other => {
+                            return Err(ParseError::UnexpectedToken {
+                                expected: "तर्क-नाम (Parameter name)".to_string(),
+                                found: other,
+                                span: p_span,
+                            });
+                        }
+                    };
 
-                self.consume(TokenKind::Colon, ":")?;
-                let type_ann = self.parse_type_annotation()?;
+                    self.consume(TokenKind::Colon, ":")?;
+                    let type_ann = self.parse_type_annotation()?;
+                    (p_name, type_ann)
+                };
 
                 params.push(Param {
                     name: p_name,
@@ -304,8 +433,29 @@ impl Parser {
 
             // Assignment or Expression statement
             TokenKind::Identifier(ref id) => {
-                // Lookahead to see if next token is '='
-                if self.cursor + 1 < self.tokens.len()
+                // Lookahead to see if next token is '.' followed by identifier and '='
+                if self.cursor + 3 < self.tokens.len()
+                    && self.tokens[self.cursor + 1].kind == TokenKind::Dot
+                    && matches!(self.tokens[self.cursor + 2].kind, TokenKind::Identifier(_))
+                    && self.tokens[self.cursor + 3].kind == TokenKind::Equal
+                {
+                    let target = id.clone();
+                    self.advance(); // consume target id
+                    self.advance(); // consume '.'
+                    let field = match self.advance().kind.clone() {
+                        TokenKind::Identifier(f) => f,
+                        _ => unreachable!(),
+                    };
+                    self.advance(); // consume '='
+                    let value = self.parse_expression()?;
+                    let danda = self.consume(TokenKind::Danda, "। (Danda)")?;
+                    Ok(Statement::FieldAssignment {
+                        target,
+                        field,
+                        value,
+                        span: cur.span.merge(danda.span),
+                    })
+                } else if self.cursor + 1 < self.tokens.len()
                     && self.tokens[self.cursor + 1].kind == TokenKind::Equal
                 {
                     let target = id.clone();
@@ -481,6 +631,61 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.parse_base_primary()?;
+
+        while self.check(&TokenKind::Dot) {
+            self.advance(); // consume '.'
+            let member_span = self.current().span;
+            let member_name = match self.advance().kind.clone() {
+                TokenKind::Identifier(name) => name,
+                other => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "क्षेत्र-नाम वा विधि-नाम (Field or method name)".to_string(),
+                        found: other,
+                        span: member_span,
+                    });
+                }
+            };
+
+            if self.check(&TokenKind::LParen) {
+                self.advance(); // consume '('
+                let mut args = Vec::new();
+                if !self.check(&TokenKind::RParen) {
+                    loop {
+                        args.push(self.parse_expression()?);
+                        if self.check(&TokenKind::Comma) {
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                let rparen = self.consume(TokenKind::RParen, ")")?;
+                let span = expr.span.merge(rparen.span);
+                expr = Expr {
+                    kind: ExprKind::MethodCall {
+                        target: Box::new(expr),
+                        method: member_name,
+                        args,
+                    },
+                    span,
+                };
+            } else {
+                let span = expr.span.merge(member_span);
+                expr = Expr {
+                    kind: ExprKind::FieldAccess {
+                        target: Box::new(expr),
+                        field: member_name,
+                    },
+                    span,
+                };
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_base_primary(&mut self) -> Result<Expr, ParseError> {
         let cur = self.current().clone();
         match cur.kind {
             TokenKind::DevanagariInteger(val, raw) => {
@@ -520,25 +725,55 @@ impl Parser {
             }
             TokenKind::Identifier(id) => {
                 self.advance();
-                // Check if it's a function call: id(...)
+                // Check if it's a function call or struct instantiation: id(...)
                 if self.check(&TokenKind::LParen) {
                     self.advance(); // consume '('
-                    let mut args = Vec::new();
-                    if !self.check(&TokenKind::RParen) {
-                        loop {
-                            args.push(self.parse_expression()?);
-                            if self.check(&TokenKind::Comma) {
-                                self.advance();
-                            } else {
-                                break;
+                    // Check if the next token is an identifier followed by ':'
+                    // e.g. बिन्दु(क्ष: ३.०, य: ४.०)
+                    if self.cursor + 1 < self.tokens.len()
+                        && matches!(self.peek_kind(), TokenKind::Identifier(_))
+                        && self.tokens[self.cursor + 1].kind == TokenKind::Colon
+                    {
+                        let mut fields = Vec::new();
+                        if !self.check(&TokenKind::RParen) {
+                            loop {
+                                let f_name = match self.advance().kind.clone() {
+                                    TokenKind::Identifier(f) => f,
+                                    _ => unreachable!(),
+                                };
+                                self.consume(TokenKind::Colon, ":")?;
+                                let f_val = self.parse_expression()?;
+                                fields.push((f_name, f_val));
+                                if self.check(&TokenKind::Comma) {
+                                    self.advance();
+                                } else {
+                                    break;
+                                }
                             }
                         }
+                        let rparen = self.consume(TokenKind::RParen, ")")?;
+                        Ok(Expr {
+                            kind: ExprKind::StructInit { name: id, fields },
+                            span: cur.span.merge(rparen.span),
+                        })
+                    } else {
+                        let mut args = Vec::new();
+                        if !self.check(&TokenKind::RParen) {
+                            loop {
+                                args.push(self.parse_expression()?);
+                                if self.check(&TokenKind::Comma) {
+                                    self.advance();
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
+                        let rparen = self.consume(TokenKind::RParen, ")")?;
+                        Ok(Expr {
+                            kind: ExprKind::Call { callee: id, args },
+                            span: cur.span.merge(rparen.span),
+                        })
                     }
-                    let rparen = self.consume(TokenKind::RParen, ")")?;
-                    Ok(Expr {
-                        kind: ExprKind::Call { callee: id, args },
-                        span: cur.span.merge(rparen.span),
-                    })
                 } else {
                     Ok(Expr {
                         kind: ExprKind::Identifier(id),
@@ -588,4 +823,58 @@ mod tests {
             _ => panic!("Expected function"),
         }
     }
+
+    #[test]
+    fn test_parse_struct_and_methods() {
+        let code = r#"
+संरचना बिन्दु
+    क्ष: अंश६४।
+    य: अंश६४।
+इति
+
+विधान बिन्दु
+    क्रिया दूरता(स्व) -> अंश६४
+        प्रति स्व.क्ष + स्व.य।
+    इति
+इति
+
+क्रिया मुख्य() -> रिक्त
+    मान विकार्य ब = बिन्दु(क्ष: ३.०, य: ४.०)।
+    मान द = ब.दूरता()।
+    ब.क्ष = ५.०।
+इति
+"#;
+        let mut lexer = Lexer::new(code);
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(program.items.len(), 3);
+        match &program.items[0] {
+            TopLevelItem::Struct(s) => {
+                assert_eq!(s.name, "बिन्दु");
+                assert_eq!(s.fields.len(), 2);
+                assert_eq!(s.fields[0].name, "क्ष");
+                assert_eq!(s.fields[1].name, "य");
+            }
+            _ => panic!("Expected struct"),
+        }
+        match &program.items[1] {
+            TopLevelItem::Impl(imp) => {
+                assert_eq!(imp.target, "बिन्दु");
+                assert_eq!(imp.methods.len(), 1);
+                assert_eq!(imp.methods[0].name, "दूरता");
+                assert_eq!(imp.methods[0].params[0].name, "स्व");
+            }
+            _ => panic!("Expected impl block"),
+        }
+        match &program.items[2] {
+            TopLevelItem::Function(f) => {
+                assert_eq!(f.name, "मुख्य");
+                assert_eq!(f.body.len(), 3);
+            }
+            _ => panic!("Expected function"),
+        }
+    }
 }
+

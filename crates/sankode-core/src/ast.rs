@@ -8,8 +8,31 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TopLevelItem {
     Function(FunctionDecl),
+    Struct(StructDecl),
+    Impl(ImplBlock),
     Statement(Statement),
     Comment(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructDecl {
+    pub name: String,
+    pub fields: Vec<FieldDecl>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldDecl {
+    pub name: String,
+    pub type_ann: TypeAnnotation,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImplBlock {
+    pub target: String,
+    pub methods: Vec<FunctionDecl>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,7 +53,7 @@ pub struct Param {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeAnnotation {
-    Simple(String), // e.g., पूर्ण६४, अंश६४, सूत्र, रिक्त
+    Simple(String), // e.g., पूर्ण६४, अंश६४, सूत्र, रिक्त, बिन्दु
     Reference(Box<TypeAnnotation>), // ऋण पूर्ण६४
     MutReference(Box<TypeAnnotation>), // चलऋण पूर्ण६४
 }
@@ -48,6 +71,13 @@ pub enum Statement {
     /// target = expr।
     Assignment {
         target: String,
+        value: Expr,
+        span: Span,
+    },
+    /// target.field = expr।
+    FieldAssignment {
+        target: String,
+        field: String,
         value: Expr,
         span: Span,
     },
@@ -98,6 +128,19 @@ pub enum ExprKind {
     Call {
         callee: String,
         args: Vec<Expr>,
+    },
+    MethodCall {
+        target: Box<Expr>,
+        method: String,
+        args: Vec<Expr>,
+    },
+    FieldAccess {
+        target: Box<Expr>,
+        field: String,
+    },
+    StructInit {
+        name: String,
+        fields: Vec<(String, Expr)>,
     },
     Borrow {
         is_mut: bool,

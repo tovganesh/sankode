@@ -86,6 +86,21 @@ pub fn format_i64_devanagari(mut n: i64) -> String {
     digits.into_iter().rev().collect()
 }
 
+/// Formats an f64 float into a Devanagari numeral string
+pub fn format_f64_devanagari(f: f64) -> String {
+    let s = format!("{:.4}", f);
+    let mut result = String::new();
+    for c in s.chars() {
+        if c.is_ascii_digit() {
+            let digit = c.to_digit(10).unwrap();
+            result.push(u32_to_devanagari_digit(digit).unwrap());
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

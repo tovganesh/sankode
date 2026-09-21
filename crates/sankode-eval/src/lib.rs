@@ -1,6 +1,6 @@
 use sankode_core::{
-    format_i64_devanagari, BinaryOp, Expr, ExprKind, FunctionDecl, Program, Statement, TopLevelItem,
-    UnaryOp,
+    format_f64_devanagari, format_i64_devanagari, BinaryOp, Expr, ExprKind, FunctionDecl, Program,
+    Statement, StructDecl, TopLevelItem, UnaryOp,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -27,6 +27,10 @@ pub enum Value {
     Float(f64),
     String(String),
     Bool(bool),
+    Struct {
+        name: String,
+        fields: Rc<RefCell<HashMap<String, Value>>>,
+    },
     Unit,
 }
 
@@ -34,10 +38,17 @@ impl Value {
     pub fn display_devanagari(&self) -> String {
         match self {
             Value::Integer(n) => format_i64_devanagari(*n),
-            Value::Float(f) => format!("{:.4}", f),
+            Value::Float(f) => format_f64_devanagari(*f),
             Value::String(s) => s.clone(),
             Value::Bool(true) => "सत्यम्".to_string(),
             Value::Bool(false) => "मिथ्या".to_string(),
+            Value::Struct { name, fields } => {
+                let mut parts = Vec::new();
+                for (k, v) in fields.borrow().iter() {
+                    parts.push(format!("{}: {}", k, v.display_devanagari()));
+                }
+                format!("{}({})", name, parts.join(", "))
+            }
             Value::Unit => "रिक्त".to_string(),
         }
     }
@@ -81,6 +92,16 @@ impl Env {
         }
     }
 
+    pub fn is_mut(&self, name: &str) -> Option<bool> {
+        if let Some(m) = self.mutability.get(name) {
+            Some(*m)
+        } else if let Some(ref parent) = self.parent {
+            parent.borrow().is_mut(name)
+        } else {
+            None
+        }
+    }
+
     pub fn assign(&mut self, name: &str, val: Value) -> Result<(), RuntimeError> {
         if self.variables.contains_key(name) {
             let is_mut = *self.mutability.get(name).unwrap_or(&false);
@@ -107,6 +128,8 @@ pub enum Flow {
 
 pub struct Interpreter {
     pub functions: HashMap<String, FunctionDecl>,
+    pub methods: HashMap<(String, String), FunctionDecl>,
+    pub structs: HashMap<String, StructDecl>,
     pub global_env: Rc<RefCell<Env>>,
     pub top_level_statements: Vec<Statement>,
     pub stdout_capture: Option<Vec<String>>,
@@ -116,6 +139,8 @@ impl Interpreter {
     pub fn new() -> Self {
         Self {
             functions: HashMap::new(),
+            methods: HashMap::new(),
+            structs: HashMap::new(),
             global_env: Rc::new(RefCell::new(Env::new())),
             top_level_statements: Vec::new(),
             stdout_capture: None,
@@ -127,6 +152,17 @@ impl Interpreter {
             match item {
                 TopLevelItem::Function(func) => {
                     self.functions.insert(func.name.clone(), func.clone());
+                }
+                TopLevelItem::Struct(s) => {
+                    self.structs.insert(s.name.clone(), s.clone());
+                }
+                TopLevelItem::Impl(imp) => {
+                    for method in &imp.methods {
+                        self.methods.insert(
+                            (imp.target.clone(), method.name.clone()),
+                            method.clone(),
+                        );
+                    }
                 }
                 TopLevelItem::Statement(stmt) => {
                     self.top_level_statements.push(stmt.clone());
@@ -175,7 +211,8 @@ impl Interpreter {
         env: Rc<RefCell<Env>>,
     ) -> Result<Value, RuntimeError> {
         for (param, arg) in func.params.iter().zip(args.into_iter()) {
-            env.borrow_mut().define(param.name.clone(), arg, false);
+            let is_mut = param.name == "स्व";
+            env.borrow_mut().define(param.name.clone(), arg, is_mut);
         }
 
         for stmt in &func.body {
@@ -208,6 +245,37 @@ impl Interpreter {
                 let val = self.eval_expr(value, env.clone())?;
                 env.borrow_mut().assign(target, val)?;
                 Ok(Flow::None)
+            }
+            Statement::FieldAssignment {
+                target,
+                field,
+                value,
+                ..
+            } => {
+                let env_ref = env.borrow();
+                let is_mut = env_ref.is_mut(target).unwrap_or(false);
+                if !is_mut {
+                    return Err(RuntimeError::TypeMismatch(format!(
+                        "चरः '{}' अविकार्यः अस्ति (Cannot assign to immutable variable)",
+                        target
+                    )));
+                }
+                let target_val = env_ref.get(target).ok_or_else(|| {
+                    RuntimeError::UndefinedVariable(target.clone())
+                })?;
+                drop(env_ref);
+
+                let val = self.eval_expr(value, env)?;
+                match target_val {
+                    Value::Struct { fields, .. } => {
+                        fields.borrow_mut().insert(field.clone(), val);
+                        Ok(Flow::None)
+                    }
+                    _ => Err(RuntimeError::TypeMismatch(format!(
+                        "चरः '{}' संरचना नास्ति",
+                        target
+                    ))),
+                }
             }
             Statement::If {
                 condition,
@@ -329,6 +397,63 @@ impl Interpreter {
                     Err(RuntimeError::UndefinedFunction(callee.clone()))
                 }
             }
+            ExprKind::FieldAccess { target, field } => {
+                let target_val = self.eval_expr(target, env)?;
+                match target_val {
+                    Value::Struct { ref fields, .. } => fields
+                        .borrow()
+                        .get(field)
+                        .cloned()
+                        .ok_or_else(|| RuntimeError::UndefinedVariable(field.clone())),
+                    _ => Err(RuntimeError::TypeMismatch(
+                        "संरचनायाः क्षेत्रं न लब्धम् (Expected struct for field access)".to_string(),
+                    )),
+                }
+            }
+            ExprKind::MethodCall {
+                target,
+                method,
+                args,
+            } => {
+                let target_val = self.eval_expr(target, env.clone())?;
+                let struct_name = match &target_val {
+                    Value::Struct { name, .. } => name.clone(),
+                    _ => {
+                        return Err(RuntimeError::TypeMismatch(
+                            "विधानक्रिया संरचनायाः उपरि एव प्रयुज्यते (Method call requires struct target)".to_string(),
+                        ));
+                    }
+                };
+
+                let method_decl = self
+                    .methods
+                    .get(&(struct_name.clone(), method.clone()))
+                    .cloned()
+                    .ok_or_else(|| {
+                        RuntimeError::UndefinedFunction(format!("{}.{}", struct_name, method))
+                    })?;
+
+                let mut evaluated_args = Vec::new();
+                // First parameter is self ('स्व')
+                evaluated_args.push(target_val);
+                for arg in args {
+                    evaluated_args.push(self.eval_expr(arg, env.clone())?);
+                }
+
+                let method_env = Rc::new(RefCell::new(Env::with_parent(self.global_env.clone())));
+                self.execute_function(&method_decl, evaluated_args, method_env)
+            }
+            ExprKind::StructInit { name, fields } => {
+                let mut field_values = HashMap::new();
+                for (f_name, f_expr) in fields {
+                    let f_val = self.eval_expr(f_expr, env.clone())?;
+                    field_values.insert(f_name.clone(), f_val);
+                }
+                Ok(Value::Struct {
+                    name: name.clone(),
+                    fields: Rc::new(RefCell::new(field_values)),
+                })
+            }
         }
     }
 
@@ -440,4 +565,51 @@ mod tests {
         let stdout = interp.stdout_capture.unwrap();
         assert_eq!(stdout[0], "परिणाम = १३");
     }
+
+    #[test]
+    fn test_struct_methods_execution() {
+        let code = r#"
+संरचना बिन्दु
+    क्ष: अंश६४।
+    य: अंश६४।
+इति
+
+विधान बिन्दु
+    क्रिया दूरता(स्व) -> अंश६४
+        प्रति स्व.क्ष + स्व.य।
+    इति
+
+    क्रिया स्थानान्तरय(चलऋण स्व, अक्ष: अंश६४, अय: अंश६४) -> रिक्त
+        स्व.क्ष = स्व.क्ष + अक्ष।
+        स्व.य = स्व.य + अय।
+    इति
+इति
+
+क्रिया मुख्य() -> रिक्त
+    मान विकार्य ब = बिन्दु(क्ष: ३.०, य: ४.०)।
+    मान द = ब.दूरता()।
+    मुद्रय("दूरता = ", द)।
+    ब.स्थानान्तरय(१.०, २.०)।
+    मान द२ = ब.दूरता()।
+    मुद्रय("नूतन-दूरता = ", द२)।
+    ब.क्ष = १०.०।
+    मुद्रय("अन्तिम-क्ष = ", ब.क्ष)।
+इति
+"#;
+        let mut lexer = Lexer::new(code);
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse_program().unwrap();
+
+        let mut interp = Interpreter::new();
+        interp.stdout_capture = Some(Vec::new());
+        interp.load_program(&program);
+        interp.run_main().unwrap();
+
+        let stdout = interp.stdout_capture.unwrap();
+        assert_eq!(stdout[0], "दूरता = ७.००००");
+        assert_eq!(stdout[1], "नूतन-दूरता = १०.००००");
+        assert_eq!(stdout[2], "अन्तिम-क्ष = १०.००००");
+    }
 }
+
