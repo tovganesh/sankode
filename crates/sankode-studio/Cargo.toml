@@ -1,0 +1,24 @@
+[package]
+name = "sankode-studio"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Sankode Studio: Minimal IDE and visual developer environment for Sankode"
+
+[[bin]]
+name = "sankode-studio"
+path = "src/main.rs"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+sankode-lexer = { path = "../sankode-lexer" }
+sankode-parser = { path = "../sankode-parser" }
+sankode-semantics = { path = "../sankode-semantics" }
+sankode-borrowck = { path = "../sankode-borrowck" }
+sankode-eval = { path = "../sankode-eval" }
+sankode-ime = { path = "../sankode-ime" }
+clap = { workspace = true }
+colored = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

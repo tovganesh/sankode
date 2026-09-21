@@ -46,6 +46,11 @@ enum Commands {
     },
     /// Launch the interactive REPL (सङ्वादकम्)
     Repl,
+    /// Launch the Sankode Studio IDE (सङ्कोड वेधशाला)
+    Studio {
+        #[arg(short, long, default_value_t = 4040)]
+        port: u16,
+    },
 }
 
 fn main() {
@@ -57,6 +62,7 @@ fn main() {
         Some(Commands::Tokens { path }) => print_tokens(&path),
         Some(Commands::Parse { path }) => print_ast(&path),
         Some(Commands::Repl) => run_repl(),
+        Some(Commands::Studio { port }) => launch_studio(port),
         None => {
             if let Some(file) = cli.file {
                 run_file(&file);
@@ -209,5 +215,14 @@ fn run_repl() {
                 break;
             }
         }
+    }
+}
+
+fn launch_studio(port: u16) {
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.args(["run", "-p", "sankode-studio", "--", "--port", &port.to_string()]);
+    let status = cmd.status();
+    if let Err(e) = status {
+        eprintln!("Failed to launch Sankode Studio: {}", e);
     }
 }
