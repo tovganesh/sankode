@@ -1,0 +1,14 @@
+[package]
+name = "sankode-semantics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Type system, symbol resolution, and semantic analysis for Sankode"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+sankode-lexer = { path = "../sankode-lexer" }
+sankode-parser = { path = "../sankode-parser" }
+thiserror = { workspace = true }
+colored = { workspace = true }

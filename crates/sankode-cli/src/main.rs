@@ -1,8 +1,10 @@
 use clap::{Parser as ClapParser, Subcommand};
 use colored::Colorize;
+use sankode_borrowck::BorrowChecker;
 use sankode_eval::Interpreter;
 use sankode_lexer::Lexer;
 use sankode_parser::Parser;
+use sankode_semantics::TypeChecker;
 use std::fs;
 use std::path::PathBuf;
 
@@ -27,6 +29,11 @@ enum Commands {
         #[arg(value_name = "FILE")]
         path: PathBuf,
     },
+    /// Verify types and borrow safety without executing
+    Check {
+        #[arg(value_name = "FILE")]
+        path: PathBuf,
+    },
     /// Print tokens produced by the Devanagari lexer
     Tokens {
         #[arg(value_name = "FILE")]
@@ -46,6 +53,7 @@ fn main() {
 
     match cli.command {
         Some(Commands::Run { path }) => run_file(&path),
+        Some(Commands::Check { path }) => check_file(&path),
         Some(Commands::Tokens { path }) => print_tokens(&path),
         Some(Commands::Parse { path }) => print_ast(&path),
         Some(Commands::Repl) => run_repl(),
@@ -60,6 +68,25 @@ fn main() {
 }
 
 fn run_file(path: &PathBuf) {
+    let program = load_and_verify(path);
+    let mut interpreter = Interpreter::new();
+    interpreter.load_program(&program);
+    if let Err(e) = interpreter.run_main() {
+        eprintln!("{} {}", "निष्पादने दोषः (Runtime error):".red().bold(), e);
+        std::process::exit(1);
+    }
+}
+
+fn check_file(path: &PathBuf) {
+    let _ = load_and_verify(path);
+    println!(
+        "{} {}",
+        "✓".green().bold(),
+        "निर्दोषः सङ्केतः (Type and borrow safety checks passed!)".green()
+    );
+}
+
+fn load_and_verify(path: &PathBuf) -> sankode_core::Program {
     let source = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
@@ -86,12 +113,19 @@ fn run_file(path: &PathBuf) {
         }
     };
 
-    let mut interpreter = Interpreter::new();
-    interpreter.load_program(&program);
-    if let Err(e) = interpreter.run_main() {
-        eprintln!("{} {}", "निष्पादने दोषः (Runtime error):".red().bold(), e);
+    let mut type_checker = TypeChecker::new();
+    if let Err(e) = type_checker.check_program(&program) {
+        eprintln!("{} {}", "प्रकारदोषः (Type error):".red().bold(), e);
         std::process::exit(1);
     }
+
+    let mut borrow_checker = BorrowChecker::new();
+    if let Err(e) = borrow_checker.check_program(&program) {
+        eprintln!("{} {}", "स्वामित्वदोषः (Borrow error):".red().bold(), e);
+        std::process::exit(1);
+    }
+
+    program
 }
 
 fn print_tokens(path: &PathBuf) {
