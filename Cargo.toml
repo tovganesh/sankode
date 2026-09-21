@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/sankode-core",
+    "crates/sankode-lexer",
+    "crates/sankode-parser",
+    "crates/sankode-eval",
+    "crates/sankode-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["tovganesh"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tovganesh/sankode"
+description = "Pure Devanagari-Native Systems Programming Language"
+
+[workspace.dependencies]
+unicode-normalization = "0.1"
+thiserror = "2.0"
+clap = { version = "4.5", features = ["derive"] }
+colored = "3.0"
+rustyline = "15.0"
