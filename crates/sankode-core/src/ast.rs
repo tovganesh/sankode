@@ -8,6 +8,7 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TopLevelItem {
     Function(FunctionDecl),
+    Statement(Statement),
     Comment(String),
 }
 

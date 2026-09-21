@@ -79,12 +79,8 @@ impl Parser {
                     self.advance();
                 }
                 _ => {
-                    let cur = self.current();
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "क्रिया (Function declaration)".to_string(),
-                        found: cur.kind.clone(),
-                        span: cur.span,
-                    });
+                    let stmt = self.parse_statement()?;
+                    items.push(TopLevelItem::Statement(stmt));
                 }
             }
         }
