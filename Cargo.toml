@@ -4,6 +4,8 @@ members = [
     "crates/sankode-core",
     "crates/sankode-lexer",
     "crates/sankode-parser",
+    "crates/sankode-semantics",
+    "crates/sankode-borrowck",
     "crates/sankode-eval",
     "crates/sankode-cli",
 ]

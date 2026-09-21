@@ -1,22 +1,15 @@
 [package]
-name = "sankode-cli"
+name = "sankode-borrowck"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Command-line compiler and runtime runner for Sankode"
-
-[[bin]]
-name = "sankode"
-path = "src/main.rs"
+description = "Affine ownership, move semantics, and borrow checker for Sankode"
 
 [dependencies]
 sankode-core = { path = "../sankode-core" }
 sankode-lexer = { path = "../sankode-lexer" }
 sankode-parser = { path = "../sankode-parser" }
 sankode-semantics = { path = "../sankode-semantics" }
-sankode-borrowck = { path = "../sankode-borrowck" }
-sankode-eval = { path = "../sankode-eval" }
-clap = { workspace = true }
+thiserror = { workspace = true }
 colored = { workspace = true }
-rustyline = { workspace = true }
