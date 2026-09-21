@@ -19,6 +19,12 @@ pub enum RuntimeError {
     DivisionByZero,
     #[error("मुख्य-क्रिया न प्राप्ता (No 'मुख्य' function found)")]
     MainNotFound,
+    #[error("क्रिया-सीमा अतिक्रान्ता (Execution step limit exceeded): {0} steps (possible infinite loop)")]
+    StepLimitExceeded(usize),
+    #[error("आह्वान-सीमा अतिक्रान्ता (Call stack depth limit exceeded): {0} frames (infinite recursion)")]
+    StackOverflow(usize),
+    #[error("अतिप्रवाहः (Integer overflow): {0}")]
+    IntegerOverflow(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -133,6 +139,10 @@ pub struct Interpreter {
     pub global_env: Rc<RefCell<Env>>,
     pub top_level_statements: Vec<Statement>,
     pub stdout_capture: Option<Vec<String>>,
+    pub step_count: usize,
+    pub max_steps: Option<usize>,
+    pub call_depth: usize,
+    pub max_call_depth: usize,
 }
 
 impl Interpreter {
@@ -144,6 +154,10 @@ impl Interpreter {
             global_env: Rc::new(RefCell::new(Env::new())),
             top_level_statements: Vec::new(),
             stdout_capture: None,
+            step_count: 0,
+            max_steps: Some(1_000_000),
+            call_depth: 0,
+            max_call_depth: 500,
         }
     }
 
@@ -210,18 +224,32 @@ impl Interpreter {
         args: Vec<Value>,
         env: Rc<RefCell<Env>>,
     ) -> Result<Value, RuntimeError> {
+        self.call_depth += 1;
+        if self.call_depth > self.max_call_depth {
+            self.call_depth -= 1;
+            return Err(RuntimeError::StackOverflow(self.max_call_depth));
+        }
+
         for (param, arg) in func.params.iter().zip(args.into_iter()) {
             let is_mut = param.name == "स्व";
             env.borrow_mut().define(param.name.clone(), arg, is_mut);
         }
 
         for stmt in &func.body {
-            match self.execute_statement(stmt, env.clone())? {
-                Flow::Return(val) => return Ok(val),
-                Flow::None => {}
+            match self.execute_statement(stmt, env.clone()) {
+                Ok(Flow::Return(val)) => {
+                    self.call_depth -= 1;
+                    return Ok(val);
+                }
+                Ok(Flow::None) => {}
+                Err(e) => {
+                    self.call_depth -= 1;
+                    return Err(e);
+                }
             }
         }
 
+        self.call_depth -= 1;
         Ok(Value::Unit)
     }
 
@@ -230,6 +258,13 @@ impl Interpreter {
         stmt: &Statement,
         env: Rc<RefCell<Env>>,
     ) -> Result<Flow, RuntimeError> {
+        self.step_count += 1;
+        if let Some(max) = self.max_steps {
+            if self.step_count > max {
+                return Err(RuntimeError::StepLimitExceeded(max));
+            }
+        }
+
         match stmt {
             Statement::VarDecl {
                 name,
@@ -460,17 +495,33 @@ impl Interpreter {
     fn eval_binary_op(&self, op: BinaryOp, l: Value, r: Value) -> Result<Value, RuntimeError> {
         match (l, r) {
             (Value::Integer(a), Value::Integer(b)) => match op {
-                BinaryOp::Add => Ok(Value::Integer(a + b)),
-                BinaryOp::Sub => Ok(Value::Integer(a - b)),
-                BinaryOp::Mul => Ok(Value::Integer(a * b)),
+                BinaryOp::Add => a.checked_add(b).map(Value::Integer).ok_or_else(|| {
+                    RuntimeError::IntegerOverflow("योगे अतिप्रवाहः (Integer overflow in addition)".to_string())
+                }),
+                BinaryOp::Sub => a.checked_sub(b).map(Value::Integer).ok_or_else(|| {
+                    RuntimeError::IntegerOverflow("व्यवकलने अतिप्रवाहः (Integer overflow in subtraction)".to_string())
+                }),
+                BinaryOp::Mul => a.checked_mul(b).map(Value::Integer).ok_or_else(|| {
+                    RuntimeError::IntegerOverflow("गुणने अतिप्रवाहः (Integer overflow in multiplication)".to_string())
+                }),
                 BinaryOp::Div => {
                     if b == 0 {
                         Err(RuntimeError::DivisionByZero)
                     } else {
-                        Ok(Value::Integer(a / b))
+                        a.checked_div(b).map(Value::Integer).ok_or_else(|| {
+                            RuntimeError::IntegerOverflow("भागहारे अतिप्रवाहः (Integer overflow in division)".to_string())
+                        })
                     }
                 }
-                BinaryOp::Mod => Ok(Value::Integer(a % b)),
+                BinaryOp::Mod => {
+                    if b == 0 {
+                        Err(RuntimeError::DivisionByZero)
+                    } else {
+                        a.checked_rem(b).map(Value::Integer).ok_or_else(|| {
+                            RuntimeError::IntegerOverflow("शेषे अतिप्रवाहः (Integer overflow in modulo)".to_string())
+                        })
+                    }
+                }
                 BinaryOp::Equal => Ok(Value::Bool(a == b)),
                 BinaryOp::NotEqual => Ok(Value::Bool(a != b)),
                 BinaryOp::Less => Ok(Value::Bool(a < b)),
@@ -611,5 +662,56 @@ mod tests {
         assert_eq!(stdout[1], "नूतन-दूरता = १०.००००");
         assert_eq!(stdout[2], "अन्तिम-क्ष = १०.००००");
     }
+
+    #[test]
+    fn test_infinite_loop_protection() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    यावत् सत्यम्
+        मान क = १।
+    इति
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+
+        let mut interp = Interpreter::new();
+        interp.max_steps = Some(100);
+        interp.load_program(&program);
+        let err = interp.run_main().unwrap_err();
+        match err {
+            RuntimeError::StepLimitExceeded(limit) => {
+                assert_eq!(limit, 100);
+            }
+            _ => panic!("Expected StepLimitExceeded error"),
+        }
+    }
+
+    #[test]
+    fn test_recursion_limit_protection() {
+        let code = r#"
+क्रिया अनन्त_आह्वानम्() -> रिक्त
+    अनन्त_आह्वानम्()।
+इति
+
+क्रिया मुख्य() -> रिक्त
+    अनन्त_आह्वानम्()।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+
+        let mut interp = Interpreter::new();
+        interp.max_call_depth = 20;
+        interp.load_program(&program);
+        let err = interp.run_main().unwrap_err();
+        match err {
+            RuntimeError::StackOverflow(depth) => {
+                assert_eq!(depth, 20);
+            }
+            _ => panic!("Expected StackOverflow error"),
+        }
+    }
 }
+
 

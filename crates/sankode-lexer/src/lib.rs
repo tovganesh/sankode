@@ -95,7 +95,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, LexError> {
-        let mut tokens = Vec::new();
+        let mut tokens = Vec::with_capacity(self.chars.len() / 4);
 
         loop {
             self.skip_whitespace();

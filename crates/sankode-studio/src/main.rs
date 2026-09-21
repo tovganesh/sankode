@@ -91,14 +91,21 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                handle_client(stream);
+                std::thread::spawn(move || {
+                    handle_client(stream);
+                });
             }
             Err(e) => eprintln!("Connection error: {}", e),
         }
     }
 }
 
+const MAX_PAYLOAD_SIZE: usize = 1024 * 1024; // 1 MB limit
+
 fn handle_client(mut stream: TcpStream) {
+    let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(5)));
+    let _ = stream.set_write_timeout(Some(std::time::Duration::from_secs(5)));
+
     let mut buffer = Vec::new();
     let mut chunk = [0; 4096];
     let mut content_length = 0;
@@ -110,6 +117,12 @@ fn handle_client(mut stream: TcpStream) {
             _ => break,
         };
         buffer.extend_from_slice(&chunk[..n]);
+
+        if buffer.len() > MAX_PAYLOAD_SIZE {
+            let too_large = "HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n";
+            let _ = stream.write_all(too_large.as_bytes());
+            return;
+        }
 
         if header_end.is_none() {
             if let Some(pos) = buffer.windows(4).position(|w| w == b"\r\n\r\n") {
@@ -123,6 +136,11 @@ fn handle_client(mut stream: TcpStream) {
                             content_length = parts[1].trim().parse().unwrap_or(0);
                         }
                     }
+                }
+                if content_length > MAX_PAYLOAD_SIZE {
+                    let too_large = "HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n";
+                    let _ = stream.write_all(too_large.as_bytes());
+                    return;
                 }
             }
         }
@@ -285,6 +303,8 @@ fn execute_code_for_studio(code: &str, mode: &str) -> RunResponse {
     }
 
     let mut interpreter = Interpreter::new();
+    interpreter.max_steps = Some(500_000);
+    interpreter.max_call_depth = 300;
     interpreter.stdout_capture = Some(Vec::new());
     interpreter.load_program(&program);
 
