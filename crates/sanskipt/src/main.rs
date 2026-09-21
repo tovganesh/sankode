@@ -158,6 +158,19 @@ fn run_repl(mut ime_enabled: bool) {
                                             println!("{} {}", "क्रिया संदृष्टा:".green(), func.name);
                                             interpreter.functions.insert(func.name.clone(), func);
                                         }
+                                        sankode_core::TopLevelItem::Struct(s) => {
+                                            println!("{} {}", "संरचना संदृष्टा:".green(), s.name);
+                                            interpreter.structs.insert(s.name.clone(), s);
+                                        }
+                                        sankode_core::TopLevelItem::Impl(imp) => {
+                                            println!("{} {}", "विधानं संदृष्टम्:".green(), imp.target);
+                                            for method in imp.methods {
+                                                interpreter.methods.insert(
+                                                    (imp.target.clone(), method.name.clone()),
+                                                    method,
+                                                );
+                                            }
+                                        }
                                         sankode_core::TopLevelItem::Statement(stmt) => {
                                             match interpreter.eval_statement(&stmt) {
                                                 Ok(Some(val)) => {

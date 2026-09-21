@@ -167,6 +167,10 @@ impl<'a> Lexer<'a> {
                     kind: TokenKind::Colon,
                     span: self.current_span(start_line, start_col, start_offset),
                 }),
+                '.' => tokens.push(Token {
+                    kind: TokenKind::Dot,
+                    span: self.current_span(start_line, start_col, start_offset),
+                }),
                 '+' => tokens.push(Token {
                     kind: TokenKind::Plus,
                     span: self.current_span(start_line, start_col, start_offset),

@@ -47,6 +47,12 @@ impl BorrowChecker {
         for item in &program.items {
             match item {
                 TopLevelItem::Function(func) => self.check_function(func)?,
+                TopLevelItem::Impl(imp) => {
+                    for method in &imp.methods {
+                        self.check_function(method)?;
+                    }
+                }
+                TopLevelItem::Struct(_) => {}
                 TopLevelItem::Statement(stmt) => self.check_statement(stmt)?,
                 TopLevelItem::Comment(_) => {}
             }
@@ -125,6 +131,33 @@ impl BorrowChecker {
             }
             Statement::Assignment {
                 target,
+                value,
+                span,
+            } => {
+                // Must be valid to mutate target
+                if let Some(state) = self.lookup_var_mut(target) {
+                    if let Some(moved_at) = state.moved_at {
+                        return Err(BorrowError::UseAfterMove {
+                            name: target.clone(),
+                            span: *span,
+                            moved_at,
+                        });
+                    }
+                    if state.shared_borrows > 0 || state.is_mutably_borrowed {
+                        return Err(BorrowError::MutateWhileBorrowed {
+                            name: target.clone(),
+                            span: *span,
+                        });
+                    }
+                }
+
+                // Check value expression
+                self.check_expr_read_or_move(value)?;
+                Ok(())
+            }
+            Statement::FieldAssignment {
+                target,
+                field: _,
                 value,
                 span,
             } => {
@@ -257,9 +290,32 @@ impl BorrowChecker {
                 Ok(())
             }
             ExprKind::Unary { expr: inner, .. } => self.check_expr_read(inner),
-            ExprKind::Call { args, .. } => {
+            ExprKind::Call { callee, args } => {
+                if callee == "मुद्रय" {
+                    for arg in args {
+                        self.check_expr_read(arg)?;
+                    }
+                    return Ok(());
+                }
                 for arg in args {
                     self.check_expr_read_or_move(arg)?;
+                }
+                Ok(())
+            }
+            ExprKind::FieldAccess { target, .. } => {
+                self.check_expr_read(target)?;
+                Ok(())
+            }
+            ExprKind::MethodCall { target, args, .. } => {
+                self.check_expr_read(target)?;
+                for arg in args {
+                    self.check_expr_read_or_move(arg)?;
+                }
+                Ok(())
+            }
+            ExprKind::StructInit { fields, .. } => {
+                for (_, f_expr) in fields {
+                    self.check_expr_read_or_move(f_expr)?;
                 }
                 Ok(())
             }
@@ -301,6 +357,7 @@ impl BorrowChecker {
             ExprKind::DevanagariFloat(_, _) => Type::Ansha64,
             ExprKind::StringLiteral(_) => Type::Sutra,
             ExprKind::BoolLiteral(_) => Type::Dvaidha,
+            ExprKind::StructInit { name, .. } => Type::Struct(name.clone()),
             _ => Type::Unknown,
         }
     }
@@ -375,4 +432,56 @@ mod tests {
             _ => panic!("Expected MutBorrowWhileImmutablyBorrowed error"),
         }
     }
+
+    #[test]
+    fn test_struct_borrowck_ok() {
+        let code = r#"
+संरचना बिन्दु
+    क्ष: अंश६४।
+    य: अंश६४।
+इति
+
+विधान बिन्दु
+    क्रिया दूरता(स्व) -> अंश६४
+        प्रति स्व.क्ष + स्व.य।
+    इति
+इति
+
+क्रिया मुख्य() -> रिक्त
+    मान विकार्य ब = बिन्दु(क्ष: ३.०, य: ४.०)।
+    मान द = ब.दूरता()।
+    ब.क्ष = ५.०।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        let mut bc = BorrowChecker::new();
+        assert!(bc.check_program(&program).is_ok());
+    }
+
+    #[test]
+    fn test_struct_move_semantics() {
+        let code = r#"
+संरचना सन्देश
+    पाठ: सूत्र।
+इति
+
+क्रिया मुख्य() -> रिक्त
+    मान स१ = सन्देश(पाठ: "नमस्ते")।
+    मान स२ = स१।
+    मुद्रय(स१.पाठ)।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        let mut bc = BorrowChecker::new();
+        let err = bc.check_program(&program).unwrap_err();
+        match err {
+            BorrowError::UseAfterMove { name, .. } => {
+                assert_eq!(name, "स१");
+            }
+            _ => panic!("Expected UseAfterMove error for struct move"),
+        }
+    }
 }
+

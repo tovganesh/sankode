@@ -17,6 +17,7 @@ pub enum Type {
     Varna,
     Sutra, // Owned heap string: Move semantics (non-Copy)!
     Rikta,
+    Struct(String),
     Reference(Box<Type>),
     MutReference(Box<Type>),
     Unknown,
@@ -40,8 +41,8 @@ impl Type {
             | Type::Varna
             | Type::Rikta
             | Type::Reference(_) => true,
-            // Sutra and MutReference are non-Copy (affine move semantics)
-            Type::Sutra | Type::MutReference(_) | Type::Unknown => false,
+            // Sutra, Struct, and MutReference are non-Copy (affine move semantics)
+            Type::Sutra | Type::Struct(_) | Type::MutReference(_) | Type::Unknown => false,
         }
     }
 
@@ -62,7 +63,7 @@ impl Type {
                 "वर्ण" => Type::Varna,
                 "सूत्र" => Type::Sutra,
                 "रिक्त" => Type::Rikta,
-                _ => Type::Unknown,
+                other => Type::Struct(other.to_string()),
             },
             TypeAnnotation::Reference(inner) => {
                 Type::Reference(Box::new(Self::from_annotation(inner)))
@@ -91,6 +92,7 @@ impl fmt::Display for Type {
             Type::Varna => write!(f, "वर्ण"),
             Type::Sutra => write!(f, "सूत्र"),
             Type::Rikta => write!(f, "रिक्त"),
+            Type::Struct(name) => write!(f, "{}", name),
             Type::Reference(inner) => write!(f, "ऋण {}", inner),
             Type::MutReference(inner) => write!(f, "चलऋण {}", inner),
             Type::Unknown => write!(f, "अज्ञात"),
