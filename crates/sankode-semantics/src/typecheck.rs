@@ -93,10 +93,12 @@ impl TypeChecker {
             }
         }
 
-        // Second pass: check function bodies
+        // Second pass: check function bodies and top-level statements
         for item in &program.items {
-            if let TopLevelItem::Function(func) = item {
-                self.check_function(func)?;
+            match item {
+                TopLevelItem::Function(func) => self.check_function(func)?,
+                TopLevelItem::Statement(stmt) => self.check_statement(stmt)?,
+                TopLevelItem::Comment(_) => {}
             }
         }
 

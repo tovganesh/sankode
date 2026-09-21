@@ -106,8 +106,9 @@ pub enum Flow {
 }
 
 pub struct Interpreter {
-    functions: HashMap<String, FunctionDecl>,
-    global_env: Rc<RefCell<Env>>,
+    pub functions: HashMap<String, FunctionDecl>,
+    pub global_env: Rc<RefCell<Env>>,
+    pub top_level_statements: Vec<Statement>,
     pub stdout_capture: Option<Vec<String>>,
 }
 
@@ -116,24 +117,54 @@ impl Interpreter {
         Self {
             functions: HashMap::new(),
             global_env: Rc::new(RefCell::new(Env::new())),
+            top_level_statements: Vec::new(),
             stdout_capture: None,
         }
     }
 
     pub fn load_program(&mut self, program: &Program) {
         for item in &program.items {
-            if let TopLevelItem::Function(func) = item {
-                self.functions.insert(func.name.clone(), func.clone());
+            match item {
+                TopLevelItem::Function(func) => {
+                    self.functions.insert(func.name.clone(), func.clone());
+                }
+                TopLevelItem::Statement(stmt) => {
+                    self.top_level_statements.push(stmt.clone());
+                }
+                TopLevelItem::Comment(_) => {}
             }
         }
     }
 
     pub fn run_main(&mut self) -> Result<Value, RuntimeError> {
+        // Execute top-level script statements first
+        for stmt in &self.top_level_statements.clone() {
+            if let Flow::Return(val) = self.execute_statement(stmt, self.global_env.clone())? {
+                return Ok(val);
+            }
+        }
+
+        // Then execute मुख्य if it exists
         if let Some(main_func) = self.functions.get("मुख्य").cloned() {
             let env = Rc::new(RefCell::new(Env::with_parent(self.global_env.clone())));
             self.execute_function(&main_func, Vec::new(), env)
+        } else if !self.top_level_statements.is_empty() {
+            Ok(Value::Unit)
         } else {
             Err(RuntimeError::MainNotFound)
+        }
+    }
+
+    pub fn eval_statement(&mut self, stmt: &Statement) -> Result<Option<Value>, RuntimeError> {
+        match stmt {
+            Statement::Expr(expr) => {
+                let val = self.eval_expr(expr, self.global_env.clone())?;
+                Ok(Some(val))
+            }
+            _ => {
+                self.execute_statement(stmt, self.global_env.clone())?;
+                Ok(None)
+            }
         }
     }
 

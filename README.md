@@ -54,8 +54,14 @@ Ensure you have Rust installed (1.80+):
 # Build the compiler and runtime
 cargo build --release
 
-# Run the hello world example
+# Run the Sankode compiled hello world example
 cargo run -p sankode-cli -- run examples/नमस्ते_जगत्.सङ्
+
+# Run a Python-style Sanskipt script without main boilerplate
+cargo run -p sanskipt -- examples/गणना_लिपि.सङ्स्कृ
+
+# Launch the Sanskipt interactive REPL
+cargo run -p sanskipt
 ```
 
 ---
@@ -68,12 +74,19 @@ sankode/
 │   ├── sankode-core/       # Devanagari numerals, tokens, AST, span tracking
 │   ├── sankode-lexer/      # UTF-8 Devanagari tokenizer & Unicode NFKC normalization
 │   ├── sankode-parser/     # Brace-free recursive descent & Pratt parser
-│   ├── sankode-eval/       # Interactive interpreter & tree-walk evaluator
-│   └── sankode-cli/        # CLI executable (`sankode run`, `sankode repl`)
+│   ├── sankode-semantics/  # Static type checker & immutability analysis
+│   ├── sankode-borrowck/   # Affine ownership, move semantics & borrow checker
+│   ├── sankode-eval/       # Execution engine & tree-walk runtime
+│   ├── sankode-cli/        # Sankode CLI (`sankode run`, `sankode check`, `sankode repl`)
+│   ├── sankode-ime/        # Phonetic transliteration engine (Roman to Devanagari)
+│   └── sanskipt/           # Python-inspired dynamic scripting runtime & REPL
 ├── docs/
 │   └── implementation_plan.md  # Detailed language specification & design
 └── examples/
-    └── नमस्ते_जगत्.सङ्         # Hello World in pure Devanagari
+    ├── नमस्ते_जगत्.सङ्     # Hello World in pure Devanagari
+    ├── फिबोनाची.सङ्         # Recursive Fibonacci in pure Devanagari
+    ├── स्वामित्व_प्रदर्शनम्.सङ् # Ownership & borrowing demonstration
+    └── गणना_लिपि.सङ्स्कृ    # Python-style top-level Sanskipt script
 ```
 
 ---

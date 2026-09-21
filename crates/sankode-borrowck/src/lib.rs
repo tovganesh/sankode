@@ -45,8 +45,10 @@ impl BorrowChecker {
 
     pub fn check_program(&mut self, program: &Program) -> Result<(), BorrowError> {
         for item in &program.items {
-            if let TopLevelItem::Function(func) = item {
-                self.check_function(func)?;
+            match item {
+                TopLevelItem::Function(func) => self.check_function(func)?,
+                TopLevelItem::Statement(stmt) => self.check_statement(stmt)?,
+                TopLevelItem::Comment(_) => {}
             }
         }
         Ok(())

@@ -1,0 +1,21 @@
+[package]
+name = "sanskipt"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Python-inspired dynamic script interpreter and REPL for Sankode"
+
+[[bin]]
+name = "sanskipt"
+path = "src/main.rs"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+sankode-lexer = { path = "../sankode-lexer" }
+sankode-parser = { path = "../sankode-parser" }
+sankode-eval = { path = "../sankode-eval" }
+sankode-ime = { path = "../sankode-ime" }
+clap = { workspace = true }
+colored = { workspace = true }
+rustyline = { workspace = true }

@@ -8,6 +8,8 @@ members = [
     "crates/sankode-borrowck",
     "crates/sankode-eval",
     "crates/sankode-cli",
+    "crates/sankode-ime",
+    "crates/sanskipt",
 ]
 
 [workspace.package]

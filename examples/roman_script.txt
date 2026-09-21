@@ -1,0 +1,4 @@
+mana desh = "Bharat" |
+mudraya("Namaste ", desh) |
+mana sankhya = 10 |
+mudraya("Varga = ", sankhya * sankhya) |
