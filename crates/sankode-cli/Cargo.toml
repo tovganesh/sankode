@@ -1,0 +1,20 @@
+[package]
+name = "sankode-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Command-line compiler and runtime runner for Sankode"
+
+[[bin]]
+name = "sankode"
+path = "src/main.rs"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+sankode-lexer = { path = "../sankode-lexer" }
+sankode-parser = { path = "../sankode-parser" }
+sankode-eval = { path = "../sankode-eval" }
+clap = { workspace = true }
+colored = { workspace = true }
+rustyline = { workspace = true }

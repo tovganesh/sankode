@@ -1,0 +1,14 @@
+[package]
+name = "sankode-eval"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Tree-walk interpreter and execution runtime for Sankode and Sanskipt"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+sankode-lexer = { path = "../sankode-lexer" }
+sankode-parser = { path = "../sankode-parser" }
+thiserror = { workspace = true }
+colored = { workspace = true }

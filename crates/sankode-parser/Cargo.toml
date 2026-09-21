@@ -1,0 +1,12 @@
+[package]
+name = "sankode-parser"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Brace-free parser for Sankode"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+sankode-lexer = { path = "../sankode-lexer" }
+thiserror = { workspace = true }

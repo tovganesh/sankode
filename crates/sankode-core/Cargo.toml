@@ -1,0 +1,11 @@
+[package]
+name = "sankode-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core types, AST, tokens, and Devanagari numeral utilities for Sankode"
+
+[dependencies]
+unicode-normalization = { workspace = true }
+thiserror = { workspace = true }

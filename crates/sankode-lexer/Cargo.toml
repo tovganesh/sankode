@@ -1,0 +1,12 @@
+[package]
+name = "sankode-lexer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Devanagari lexical analysis and tokenizer for Sankode"
+
+[dependencies]
+sankode-core = { path = "../sankode-core" }
+unicode-normalization = { workspace = true }
+thiserror = { workspace = true }
