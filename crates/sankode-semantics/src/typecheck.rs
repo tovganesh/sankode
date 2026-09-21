@@ -65,6 +65,17 @@ pub struct TypeChecker {
     current_return_type: Type,
 }
 
+fn types_compatible(expected: &Type, actual: &Type) -> bool {
+    if expected == actual || expected == &Type::Unknown || actual == &Type::Unknown {
+        return true;
+    }
+    match (expected, actual) {
+        (Type::SoochiAny, Type::Soochi(_)) | (Type::Soochi(_), Type::SoochiAny) => true,
+        (Type::Reference(a), b) | (b, Type::Reference(a)) if a.as_ref() == b => true,
+        _ => false,
+    }
+}
+
 impl TypeChecker {
     pub fn new() -> Self {
         let mut functions = HashMap::new();
@@ -74,6 +85,94 @@ impl TypeChecker {
             FuncSignature {
                 params: Vec::new(),
                 return_type: Type::Rikta,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूची_सृज".to_string(),
+            FuncSignature {
+                params: vec![Type::Purna64, Type::Unknown],
+                return_type: Type::SoochiAny,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूची_दैर्घ्यम्".to_string(),
+            FuncSignature {
+                params: vec![Type::SoochiAny],
+                return_type: Type::Purna64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूची_संयोजय".to_string(),
+            FuncSignature {
+                params: vec![Type::SoochiAny, Type::Unknown],
+                return_type: Type::Rikta,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूत्र_दैर्घ्यम्".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra],
+                return_type: Type::Purna64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूत्र_वर्ण".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra, Type::Purna64],
+                return_type: Type::Sutra,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूत्र_अंश".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra, Type::Purna64, Type::Purna64],
+                return_type: Type::Sutra,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "लॉग".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "घाताङ्क".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "वर्गमूल".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "पूर्णाङ्क".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64],
+                return_type: Type::Purna64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "अंशाङ्क".to_string(),
+            FuncSignature {
+                params: vec![Type::Purna64],
+                return_type: Type::Ansha64,
                 span: Span::default(),
             },
         );
@@ -274,7 +373,7 @@ impl TypeChecker {
                 let init_ty = self.check_expr(init)?;
                 let final_ty = if let Some(ann) = type_ann {
                     let expected_ty = Type::from_annotation(ann);
-                    if expected_ty != init_ty && init_ty != Type::Unknown {
+                    if !types_compatible(&expected_ty, &init_ty) {
                         return Err(TypeError::Mismatch {
                             expected: expected_ty.to_string(),
                             found: init_ty.to_string(),
@@ -310,7 +409,7 @@ impl TypeChecker {
                 }
 
                 let val_ty = self.check_expr(value)?;
-                if var_info.ty != val_ty && val_ty != Type::Unknown {
+                if !types_compatible(&var_info.ty, &val_ty) {
                     return Err(TypeError::Mismatch {
                         expected: var_info.ty.to_string(),
                         found: val_ty.to_string(),
@@ -459,6 +558,41 @@ impl TypeChecker {
 
                 Ok(())
             }
+            Statement::IndexAssignment {
+                target,
+                index,
+                value,
+                span,
+            } => {
+                let target_ty = self.check_expr(target)?;
+                let idx_ty = self.check_expr(index)?;
+                if idx_ty != Type::Purna64 && idx_ty != Type::Unknown {
+                    return Err(TypeError::Mismatch {
+                        expected: "पूर्ण६४ (Integer index)".to_string(),
+                        found: idx_ty.to_string(),
+                        span: index.span,
+                    });
+                }
+                let val_ty = self.check_expr(value)?;
+                match target_ty {
+                    Type::Soochi(ref elem_ty) => {
+                        if !types_compatible(elem_ty, &val_ty) {
+                            return Err(TypeError::Mismatch {
+                                expected: elem_ty.to_string(),
+                                found: val_ty.to_string(),
+                                span: value.span,
+                            });
+                        }
+                        Ok(())
+                    }
+                    Type::SoochiAny | Type::Unknown => Ok(()),
+                    other => Err(TypeError::Mismatch {
+                        expected: "सूची (List)".to_string(),
+                        found: other.to_string(),
+                        span: *span,
+                    }),
+                }
+            }
             Statement::Expr(expr) => {
                 self.check_expr(expr)?;
                 Ok(())
@@ -472,6 +606,45 @@ impl TypeChecker {
             ExprKind::DevanagariFloat(_, _) => Ok(Type::Ansha64),
             ExprKind::StringLiteral(_) => Ok(Type::Sutra),
             ExprKind::BoolLiteral(_) => Ok(Type::Dvaidha),
+            ExprKind::ArrayLiteral(elements) => {
+                if elements.is_empty() {
+                    Ok(Type::SoochiAny)
+                } else {
+                    let first_ty = self.check_expr(&elements[0])?;
+                    for el in &elements[1..] {
+                        let el_ty = self.check_expr(el)?;
+                        if !types_compatible(&first_ty, &el_ty) {
+                            return Err(TypeError::Mismatch {
+                                expected: first_ty.to_string(),
+                                found: el_ty.to_string(),
+                                span: el.span,
+                            });
+                        }
+                    }
+                    Ok(Type::Soochi(Box::new(first_ty)))
+                }
+            }
+            ExprKind::Index { target, index } => {
+                let target_ty = self.check_expr(target)?;
+                let idx_ty = self.check_expr(index)?;
+                if idx_ty != Type::Purna64 && idx_ty != Type::Unknown {
+                    return Err(TypeError::Mismatch {
+                        expected: "पूर्ण६४ (Integer index)".to_string(),
+                        found: idx_ty.to_string(),
+                        span: index.span,
+                    });
+                }
+                match target_ty {
+                    Type::Soochi(elem_ty) => Ok(*elem_ty),
+                    Type::SoochiAny => Ok(Type::Unknown),
+                    Type::Sutra => Ok(Type::Sutra),
+                    other => Err(TypeError::Mismatch {
+                        expected: "सूची वा सूत्र (List or String)".to_string(),
+                        found: other.to_string(),
+                        span: target.span,
+                    }),
+                }
+            }
             ExprKind::Identifier(name) => {
                 let info = self
                     .lookup_var(name)
@@ -533,9 +706,13 @@ impl TypeChecker {
 
                 match op {
                     BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => {
-                        if l_ty == r_ty && (l_ty == Type::Purna64 || l_ty == Type::Ansha64) {
-                            Ok(l_ty)
-                        } else if *op == BinaryOp::Add && l_ty == Type::Sutra && r_ty == Type::Sutra {
+                        if (l_ty == r_ty && (l_ty == Type::Purna64 || l_ty == Type::Ansha64))
+                            || l_ty == Type::Unknown
+                            || r_ty == Type::Unknown
+                        {
+                            let res = if l_ty != Type::Unknown { l_ty } else { r_ty };
+                            Ok(res)
+                        } else if *op == BinaryOp::Add && (l_ty == Type::Sutra || r_ty == Type::Sutra) {
                             Ok(Type::Sutra)
                         } else {
                             Err(TypeError::Mismatch {
@@ -546,7 +723,7 @@ impl TypeChecker {
                         }
                     }
                     BinaryOp::Equal | BinaryOp::NotEqual => {
-                        if l_ty == r_ty {
+                        if types_compatible(&l_ty, &r_ty) {
                             Ok(Type::Dvaidha)
                         } else {
                             Err(TypeError::Mismatch {
@@ -557,7 +734,10 @@ impl TypeChecker {
                         }
                     }
                     BinaryOp::Less | BinaryOp::LessEq | BinaryOp::Greater | BinaryOp::GreaterEq => {
-                        if l_ty == r_ty && (l_ty == Type::Purna64 || l_ty == Type::Ansha64) {
+                        if (l_ty == r_ty && (l_ty == Type::Purna64 || l_ty == Type::Ansha64))
+                            || l_ty == Type::Unknown
+                            || r_ty == Type::Unknown
+                        {
                             Ok(Type::Dvaidha)
                         } else {
                             Err(TypeError::Mismatch {
@@ -597,7 +777,7 @@ impl TypeChecker {
 
                 for (param_ty, arg_expr) in sig.params.iter().zip(args.iter()) {
                     let arg_ty = self.check_expr(arg_expr)?;
-                    if param_ty != &arg_ty && arg_ty != Type::Unknown {
+                    if !types_compatible(param_ty, &arg_ty) {
                         return Err(TypeError::Mismatch {
                             expected: param_ty.to_string(),
                             found: arg_ty.to_string(),
@@ -873,6 +1053,29 @@ mod tests {
     मान द: अंश६४ = ब.दूरता()।
     ब.स्थानान्तरय(१.०, २.०)।
     ब.क्ष = ५.०।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        let mut checker = TypeChecker::new();
+        assert!(checker.check_program(&program).is_ok());
+    }
+
+    #[test]
+    fn test_array_and_indexing_typecheck() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    मान विकार्य सारणी = [१०, २०, ३०]।
+    मान प्रथम: पूर्ण६४ = सारणी[०]।
+    सारणी[१] = ५०।
+    मान आकार: पूर्ण६४ = सूची_दैर्घ्यम्(सारणी)।
+    सूची_संयोजय(सारणी, १००)।
+    मान नूतना: सूची = सूची_सृज(१०, ०)।
+    मान वाक्य: सूत्र = "नमस्ते"।
+    मान दैर्घ्य: पूर्ण६४ = सूत्र_दैर्घ्यम्(वाक्य)।
+    मान वर्णः: सूत्र = सूत्र_वर्ण(वाक्य, ०)।
+    मान घा: अंश६४ = घाताङ्क(१.०)।
+    मान लॉ: अंश६४ = लॉग(२.०)।
 इति
 "#;
         let tokens = Lexer::new(code).tokenize().unwrap();

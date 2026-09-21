@@ -19,6 +19,7 @@ Welcome to **Sankode** (सङ्कोड) — a systems and scripting programm
 9. [स्वामित्वम् ऋणं च (Ownership & Borrowing)](#९-स्वामित्वम्-ऋणं-च-ownership--borrowing)
 10. [साधनानि (Tooling: Sankode, Sanskipt & Studio)](#१०-साधनानि-tooling-sankode-sanskipt--studio)
 11. [व्यावहारिक-उदाहरणानि (Practical Examples)](#११-व्यावहारिक-उदाहरणानि-practical-examples)
+12. [उन्नत-विषयाः: सूचयः, गणितम्, बृहद्-भाषा-प्रतिरूपम् (Advanced: Lists, Math & LLMs)](#१२-उन्नत-विषयाः-सूचयः-गणितम्-बृहद्-भाषा-प्रतिरूपम्-advanced-lists-math--llms)
 
 ---
 
@@ -374,6 +375,72 @@ Features:
     मुद्रय("नूतन-बिन्दुः = ", ब)।
     मुद्रय("नूतना दूरता = ", ब.दूरता())।
 इति
+```
+
+---
+
+---
+
+## १२. उन्नत-विषयाः: सूचयः, गणितम्, बृहद्-भाषा-प्रतिरूपम् (Advanced: Lists, Math & LLMs)
+
+Sankode supports dynamic data structures and mathematical built-in functions suitable for tensor math, scientific computation, and machine learning models without sacrificing type safety or ownership invariants.
+
+### १२.१ सूचयः (Lists & Arrays: `सूची` / `[T]`)
+
+Sankode provides first-class dynamic lists with Devanagari bracket syntax:
+
+```sankode
+॥ सूची-निर्माणं सूचकीकरणं च ॥
+मान सारणी = [१०, २०, ३०, ४०]।
+मुद्रय("प्रथमः मानः = ", सारणी[०])।
+सारणी[०] = ९९।
+मुद्रय("परिवर्तितः मानः = ", सारणी[०])।
+```
+
+#### सूची-सम्बद्धाः क्रियाः (List Built-in Procedures)
+- `सूची_सृज(आकार: पूर्ण६४, प्रारम्भिक_मान: T) -> सूची`: Allocates a list of given length filled with an initial element.
+- `सूची_दैर्घ्यम्(सू: सूची) -> पूर्ण६४`: Returns the count of elements in the list.
+- `सूची_संयोजय(सू: सूची, मान: T) -> रिक्त`: Appends an element to the end of the list.
+
+```sankode
+मान विकार्य आव्यूह = सूची_सृज(१०, ०.०)।
+सूची_संयोजय(आव्यूह, ५.२)।
+मुद्रय("दैर्घ्यम् = ", सूची_दैर्घ्यम्(आव्यूह))।
+```
+
+### १२.२ सूत्र-परीक्षणम् (String Introspection Built-ins)
+Strings in Sankode are UTF-8 sequences that can be measured and indexed:
+- `सूत्र_दैर्घ्यम्(वाक्य: सूत्र) -> पूर्ण६४`: Returns the Unicode character count of the string.
+- `सूत्र_वर्ण(वाक्य: सूत्र, सूचक: पूर्ण६४) -> सूत्र`: Extracts the character at the specified index as a single-character string.
+- `सूत्र_अंश(वाक्य: सूत्र, आरम्भ: पूर्ण६४, समाप्ति: पूर्ण६४) -> सूत्र`: Returns the substring slice from `आरम्भ` to `समाप्ति` (exclusive).
+
+### १२.३ गणित-क्रियाः (Mathematical Built-in Procedures)
+For loss calculation, probabilities, and normalizations:
+- `लॉग(क्ष: अंश६४) -> अंश६४`: Natural logarithm (ln(x)).
+- `घाताङ्क(क्ष: अंश६४) -> अंश६४`: Exponential function (exp(x)).
+- `वर्गमूल(क्ष: अंश६४) -> अंश६४`: Square root (sqrt(x)).
+- `पूर्णाङ्क(क्ष: अंश६४) -> पूर्ण६४`: Casts float (`अंश६४`) to integer (`पूर्ण६४`).
+- `अंशाङ्क(क्ष: पूर्ण६४) -> अंश६४`: Casts integer (`पूर्ण६४`) to float (`अंश६४`).
+
+### १२.४ बृहद्-भाषा-प्रतिरूपम् (Building an LLM from Scratch: Abhijnanasakuntalam)
+
+In `examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्`, Sankode implements a complete character-level autoregressive language model trained from scratch on Mahakavi Kalidasa's classical drama *Abhijnanasakuntalam* (*अभिज्ञानशाकुन्तलम्*):
+
+1. **यादृच्छिक_यन्त्र (PRNG)**: A 64-bit Linear Congruential Generator producing pseudo-random floats in [0.0, 1.0).
+2. **शब्दावली (Tokenizer & Vocabulary)**: Parses the corpus into unique characters, builds forward and reverse token maps.
+3. **भाषा_प्रतिरूप (Autoregressive Language Model)**:
+   - Allocates a dynamic transition matrix (2D tensor `सूची_सृज(आकार * आकार, ०.०)`).
+   - Trains on bigram sequences with Laplace add-one smoothing.
+   - Computes cross-entropy loss (negative log-likelihood) and Perplexity metric.
+   - Generates novel Sanskrit verse tokens using temperature-controlled softmax probability sampling.
+
+#### Running the LLM:
+```bash
+# Run with the compiled AOT engine
+cargo run -p sankode-cli -- run examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
+
+# Or execute with the Sanskipt script runner
+cargo run -p sanskipt -- examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
 ```
 
 ---

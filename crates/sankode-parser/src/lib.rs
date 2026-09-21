@@ -311,7 +311,20 @@ impl Parser {
         match cur.kind {
             TokenKind::Identifier(name) => {
                 self.advance();
-                Ok(TypeAnnotation::Simple(name))
+                if name == "सूची" && self.check(&TokenKind::LBracket) {
+                    self.advance();
+                    let inner = self.parse_type_annotation()?;
+                    self.consume(TokenKind::RBracket, "]")?;
+                    Ok(TypeAnnotation::List(Box::new(inner)))
+                } else {
+                    Ok(TypeAnnotation::Simple(name))
+                }
+            }
+            TokenKind::LBracket => {
+                self.advance();
+                let inner = self.parse_type_annotation()?;
+                self.consume(TokenKind::RBracket, "]")?;
+                Ok(TypeAnnotation::List(Box::new(inner)))
             }
             TokenKind::Rna => {
                 self.advance();
@@ -441,44 +454,40 @@ impl Parser {
             }
 
             // Assignment or Expression statement
-            TokenKind::Identifier(ref id) => {
-                // Lookahead to see if next token is '.' followed by identifier and '='
-                if self.cursor + 3 < self.tokens.len()
-                    && self.tokens[self.cursor + 1].kind == TokenKind::Dot
-                    && matches!(self.tokens[self.cursor + 2].kind, TokenKind::Identifier(_))
-                    && self.tokens[self.cursor + 3].kind == TokenKind::Equal
-                {
-                    let target = id.clone();
-                    self.advance(); // consume target id
-                    self.advance(); // consume '.'
-                    let field = match self.advance().kind.clone() {
-                        TokenKind::Identifier(f) => f,
-                        _ => unreachable!(),
-                    };
+            TokenKind::Identifier(_) => {
+                let expr = self.parse_expression()?;
+                if self.check(&TokenKind::Equal) {
                     self.advance(); // consume '='
                     let value = self.parse_expression()?;
                     let danda = self.consume(TokenKind::Danda, "। (Danda)")?;
-                    Ok(Statement::FieldAssignment {
-                        target,
-                        field,
-                        value,
-                        span: cur.span.merge(danda.span),
-                    })
-                } else if self.cursor + 1 < self.tokens.len()
-                    && self.tokens[self.cursor + 1].kind == TokenKind::Equal
-                {
-                    let target = id.clone();
-                    self.advance(); // consume identifier
-                    self.advance(); // consume '='
-                    let value = self.parse_expression()?;
-                    let danda = self.consume(TokenKind::Danda, "। (Danda)")?;
-                    Ok(Statement::Assignment {
-                        target,
-                        value,
-                        span: cur.span.merge(danda.span),
-                    })
+                    let span = expr.span.merge(danda.span);
+                    match expr.kind {
+                        ExprKind::Identifier(target) => Ok(Statement::Assignment {
+                            target,
+                            value,
+                            span,
+                        }),
+                        ExprKind::FieldAccess { target, field } => {
+                            if let ExprKind::Identifier(target_name) = target.kind {
+                                Ok(Statement::FieldAssignment {
+                                    target: target_name,
+                                    field,
+                                    value,
+                                    span,
+                                })
+                            } else {
+                                Err(ParseError::InvalidExpression(expr.span))
+                            }
+                        }
+                        ExprKind::Index { target, index } => Ok(Statement::IndexAssignment {
+                            target,
+                            index,
+                            value,
+                            span,
+                        }),
+                        _ => Err(ParseError::InvalidExpression(expr.span)),
+                    }
                 } else {
-                    let expr = self.parse_expression()?;
                     self.consume(TokenKind::Danda, "। (Danda)")?;
                     Ok(Statement::Expr(expr))
                 }
@@ -648,52 +657,68 @@ impl Parser {
     fn parse_primary(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.parse_base_primary()?;
 
-        while self.check(&TokenKind::Dot) {
-            self.advance(); // consume '.'
-            let member_span = self.current().span;
-            let member_name = match self.advance().kind.clone() {
-                TokenKind::Identifier(name) => name,
-                other => {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "क्षेत्र-नाम वा विधि-नाम (Field or method name)".to_string(),
-                        found: other,
-                        span: member_span,
-                    });
-                }
-            };
+        loop {
+            if self.check(&TokenKind::Dot) {
+                self.advance(); // consume '.'
+                let member_span = self.current().span;
+                let member_name = match self.advance().kind.clone() {
+                    TokenKind::Identifier(name) => name,
+                    other => {
+                        return Err(ParseError::UnexpectedToken {
+                            expected: "क्षेत्र-नाम वा विधि-नाम (Field or method name)".to_string(),
+                            found: other,
+                            span: member_span,
+                        });
+                    }
+                };
 
-            if self.check(&TokenKind::LParen) {
-                self.advance(); // consume '('
-                let mut args = Vec::new();
-                if !self.check(&TokenKind::RParen) {
-                    loop {
-                        args.push(self.parse_expression()?);
-                        if self.check(&TokenKind::Comma) {
-                            self.advance();
-                        } else {
-                            break;
+                if self.check(&TokenKind::LParen) {
+                    self.advance(); // consume '('
+                    let mut args = Vec::new();
+                    if !self.check(&TokenKind::RParen) {
+                        loop {
+                            args.push(self.parse_expression()?);
+                            if self.check(&TokenKind::Comma) {
+                                self.advance();
+                            } else {
+                                break;
+                            }
                         }
                     }
+                    let rparen = self.consume(TokenKind::RParen, ")")?;
+                    let span = expr.span.merge(rparen.span);
+                    expr = Expr {
+                        kind: ExprKind::MethodCall {
+                            target: Box::new(expr),
+                            method: member_name,
+                            args,
+                        },
+                        span,
+                    };
+                } else {
+                    let span = expr.span.merge(member_span);
+                    expr = Expr {
+                        kind: ExprKind::FieldAccess {
+                            target: Box::new(expr),
+                            field: member_name,
+                        },
+                        span,
+                    };
                 }
-                let rparen = self.consume(TokenKind::RParen, ")")?;
-                let span = expr.span.merge(rparen.span);
+            } else if self.check(&TokenKind::LBracket) {
+                self.advance(); // consume '['
+                let index = self.parse_expression()?;
+                let rbracket = self.consume(TokenKind::RBracket, "]")?;
+                let span = expr.span.merge(rbracket.span);
                 expr = Expr {
-                    kind: ExprKind::MethodCall {
+                    kind: ExprKind::Index {
                         target: Box::new(expr),
-                        method: member_name,
-                        args,
+                        index: Box::new(index),
                     },
                     span,
                 };
             } else {
-                let span = expr.span.merge(member_span);
-                expr = Expr {
-                    kind: ExprKind::FieldAccess {
-                        target: Box::new(expr),
-                        field: member_name,
-                    },
-                    span,
-                };
+                break;
             }
         }
 
@@ -805,6 +830,25 @@ impl Parser {
                     span: cur.span.merge(rparen.span),
                 })
             }
+            TokenKind::LBracket => {
+                self.advance(); // consume '['
+                let mut elements = Vec::new();
+                if !self.check(&TokenKind::RBracket) {
+                    loop {
+                        elements.push(self.parse_expression()?);
+                        if self.check(&TokenKind::Comma) {
+                            self.advance();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                let rbracket = self.consume(TokenKind::RBracket, "]")?;
+                Ok(Expr {
+                    kind: ExprKind::ArrayLiteral(elements),
+                    span: cur.span.merge(rbracket.span),
+                })
+            }
             _ => Err(ParseError::InvalidExpression(cur.span)),
         }
     }
@@ -886,6 +930,25 @@ mod tests {
         match &program.items[2] {
             TopLevelItem::Function(f) => {
                 assert_eq!(f.name, "मुख्य");
+                assert_eq!(f.body.len(), 3);
+            }
+            _ => panic!("Expected function"),
+        }
+    }
+
+    #[test]
+    fn test_parse_array_and_indexing() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    मान सारणी = [१०, २०, ३०]।
+    मान प्रथम = सारणी[०]।
+    सारणी[१] = ५०।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        match &program.items[0] {
+            TopLevelItem::Function(f) => {
                 assert_eq!(f.body.len(), 3);
             }
             _ => panic!("Expected function"),

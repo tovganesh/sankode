@@ -37,6 +37,7 @@ pub enum Value {
         name: String,
         fields: Rc<RefCell<HashMap<String, Value>>>,
     },
+    List(Rc<RefCell<Vec<Value>>>),
     Unit,
 }
 
@@ -54,6 +55,10 @@ impl Value {
                     parts.push(format!("{}: {}", k, v.display_devanagari()));
                 }
                 format!("{}({})", name, parts.join(", "))
+            }
+            Value::List(list) => {
+                let parts: Vec<String> = list.borrow().iter().map(|v| v.display_devanagari()).collect();
+                format!("[{}]", parts.join(", "))
             }
             Value::Unit => "रिक्त".to_string(),
         }
@@ -155,7 +160,7 @@ impl Interpreter {
             top_level_statements: Vec::new(),
             stdout_capture: None,
             step_count: 0,
-            max_steps: Some(1_000_000),
+            max_steps: Some(10_000_000),
             call_depth: 0,
             max_call_depth: 500,
         }
@@ -370,6 +375,41 @@ impl Interpreter {
                 };
                 Ok(Flow::Return(ret_val))
             }
+            Statement::IndexAssignment {
+                target,
+                index,
+                value,
+                ..
+            } => {
+                let target_val = self.eval_expr(target, env.clone())?;
+                let idx_val = self.eval_expr(index, env.clone())?;
+                let val = self.eval_expr(value, env)?;
+
+                let idx = match idx_val {
+                    Value::Integer(i) => {
+                        if i < 0 {
+                            return Err(RuntimeError::TypeMismatch("ऋणात्मकः सूचकः अमान्यः (Negative index invalid)".to_string()));
+                        }
+                        i as usize
+                    }
+                    _ => return Err(RuntimeError::TypeMismatch("सूचकः पूर्ण६४ भवेत् (Index must be integer)".to_string())),
+                };
+
+                match target_val {
+                    Value::List(list) => {
+                        let mut borrowed = list.borrow_mut();
+                        if idx >= borrowed.len() {
+                            return Err(RuntimeError::TypeMismatch(format!(
+                                "सूचकातिक्रमः (Index out of bounds): सूचकः {}, आकारः {}",
+                                idx, borrowed.len()
+                            )));
+                        }
+                        borrowed[idx] = val;
+                        Ok(Flow::None)
+                    }
+                    _ => Err(RuntimeError::TypeMismatch("लक्ष्यं सूची नास्ति (Target is not a list)".to_string())),
+                }
+            }
             Statement::Expr(expr) => {
                 self.eval_expr(expr, env)?;
                 Ok(Flow::None)
@@ -423,6 +463,122 @@ impl Interpreter {
                         println!("{}", line);
                     }
                     return Ok(Value::Unit);
+                } else if callee == "सूची_सृज" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("सूची_सृज द्वौ तर्कौ अपेक्षते (आकार, प्रारम्भिक_मान)".to_string()));
+                    }
+                    let size = match evaluated_args[0] {
+                        Value::Integer(n) if n >= 0 => n as usize,
+                        _ => return Err(RuntimeError::TypeMismatch("आकारः पूर्ण६४ भवेत्".to_string())),
+                    };
+                    let initial_val = evaluated_args[1].clone();
+                    let list = vec![initial_val; size];
+                    return Ok(Value::List(Rc::new(RefCell::new(list))));
+                } else if callee == "सूची_दैर्घ्यम्" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("सूची_दैर्घ्यम् एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    match &evaluated_args[0] {
+                        Value::List(list) => return Ok(Value::Integer(list.borrow().len() as i64)),
+                        _ => return Err(RuntimeError::TypeMismatch("सूची अपेक्षिता".to_string())),
+                    }
+                } else if callee == "सूची_संयोजय" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("सूची_संयोजय द्वौ तर्कौ अपेक्षते (सूची, मान)".to_string()));
+                    }
+                    match &evaluated_args[0] {
+                        Value::List(list) => {
+                            list.borrow_mut().push(evaluated_args[1].clone());
+                            return Ok(Value::Unit);
+                        }
+                        _ => return Err(RuntimeError::TypeMismatch("सूची अपेक्षिता".to_string())),
+                    }
+                } else if callee == "सूत्र_दैर्घ्यम्" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("सूत्र_दैर्घ्यम् एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    match &evaluated_args[0] {
+                        Value::String(s) => return Ok(Value::Integer(s.chars().count() as i64)),
+                        _ => return Err(RuntimeError::TypeMismatch("सूत्रम् अपेक्षितम्".to_string())),
+                    }
+                } else if callee == "सूत्र_वर्ण" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("सूत्र_वर्ण द्वौ तर्कौ अपेक्षते (सूत्र, सूचक)".to_string()));
+                    }
+                    match (&evaluated_args[0], &evaluated_args[1]) {
+                        (Value::String(s), Value::Integer(idx)) => {
+                            let idx = *idx;
+                            if idx < 0 {
+                                return Err(RuntimeError::TypeMismatch("ऋणात्मकः सूचकः अमान्यः".to_string()));
+                            }
+                            let ch = s.chars().nth(idx as usize).ok_or_else(|| {
+                                RuntimeError::TypeMismatch(format!("सूचकातिक्रमः (Index out of bounds): {}", idx))
+                            })?;
+                            return Ok(Value::String(ch.to_string()));
+                        }
+                        _ => return Err(RuntimeError::TypeMismatch("सूत्रं पूर्ण६४ च अपेक्षितौ".to_string())),
+                    }
+                } else if callee == "सूत्र_अंश" {
+                    if evaluated_args.len() != 3 {
+                        return Err(RuntimeError::TypeMismatch("सूत्र_अंश त्रीन् तर्कान् अपेक्षते (सूत्र, आरम्भ, समाप्ति)".to_string()));
+                    }
+                    match (&evaluated_args[0], &evaluated_args[1], &evaluated_args[2]) {
+                        (Value::String(s), Value::Integer(start), Value::Integer(end)) => {
+                            let start = (*start).max(0) as usize;
+                            let end = (*end).max(0) as usize;
+                            let sub: String = s.chars().skip(start).take(end.saturating_sub(start)).collect();
+                            return Ok(Value::String(sub));
+                        }
+                        _ => return Err(RuntimeError::TypeMismatch("सूत्रं पूर्ण६४ च अपेक्षितौ".to_string())),
+                    }
+                } else if callee == "लॉग" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("लॉग एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    let num = match evaluated_args[0] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    return Ok(Value::Float(num.ln()));
+                } else if callee == "घाताङ्क" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("घाताङ्क एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    let num = match evaluated_args[0] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    return Ok(Value::Float(num.exp()));
+                } else if callee == "वर्गमूल" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("वर्गमूल एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    let num = match evaluated_args[0] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    return Ok(Value::Float(num.sqrt()));
+                } else if callee == "पूर्णाङ्क" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("पूर्णाङ्क एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    match evaluated_args[0] {
+                        Value::Float(f) => return Ok(Value::Integer(f as i64)),
+                        Value::Integer(n) => return Ok(Value::Integer(n)),
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    }
+                } else if callee == "अंशाङ्क" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("अंशाङ्क एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    match evaluated_args[0] {
+                        Value::Integer(n) => return Ok(Value::Float(n as f64)),
+                        Value::Float(f) => return Ok(Value::Float(f)),
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    }
                 }
 
                 if let Some(func) = self.functions.get(callee).cloned() {
@@ -477,6 +633,49 @@ impl Interpreter {
 
                 let method_env = Rc::new(RefCell::new(Env::with_parent(self.global_env.clone())));
                 self.execute_function(&method_decl, evaluated_args, method_env)
+            }
+            ExprKind::ArrayLiteral(elements) => {
+                let mut list = Vec::new();
+                for elem in elements {
+                    list.push(self.eval_expr(elem, env.clone())?);
+                }
+                Ok(Value::List(Rc::new(RefCell::new(list))))
+            }
+            ExprKind::Index { target, index } => {
+                let target_val = self.eval_expr(target, env.clone())?;
+                let idx_val = self.eval_expr(index, env)?;
+
+                let idx = match idx_val {
+                    Value::Integer(i) => {
+                        if i < 0 {
+                            return Err(RuntimeError::TypeMismatch("ऋणात्मकः सूचकः अमान्यः (Negative index invalid)".to_string()));
+                        }
+                        i as usize
+                    }
+                    _ => return Err(RuntimeError::TypeMismatch("सूचकः पूर्ण६४ भवेत् (Index must be integer)".to_string())),
+                };
+
+                match target_val {
+                    Value::List(list) => {
+                        let borrowed = list.borrow();
+                        borrowed.get(idx).cloned().ok_or_else(|| {
+                            RuntimeError::TypeMismatch(format!(
+                                "सूचकातिक्रमः (Index out of bounds): सूचकः {}, आकारः {}",
+                                idx, borrowed.len()
+                            ))
+                        })
+                    }
+                    Value::String(s) => {
+                        let ch = s.chars().nth(idx).ok_or_else(|| {
+                            RuntimeError::TypeMismatch(format!(
+                                "सूचकातिक्रमः (Index out of bounds): सूचकः {}",
+                                idx
+                            ))
+                        })?;
+                        Ok(Value::String(ch.to_string()))
+                    }
+                    _ => Err(RuntimeError::TypeMismatch("सूची वा सूत्रम् अपेक्षितम् (Expected list or string)".to_string())),
+                }
             }
             ExprKind::StructInit { name, fields } => {
                 let mut field_values = HashMap::new();
@@ -711,6 +910,50 @@ mod tests {
             }
             _ => panic!("Expected StackOverflow error"),
         }
+    }
+
+    #[test]
+    fn test_array_and_math_execution() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    मान विकार्य सारणी = [१०, २०, ३०]।
+    मुद्रय("प्रारम्भिकः = ", सारणी[०])।
+    सारणी[०] = ९९।
+    मुद्रय("परिवर्तितः = ", सारणी[०])।
+    मान आकार = सूची_दैर्घ्यम्(सारणी)।
+    मुद्रय("आकारः = ", आकार)।
+    सूची_संयोजय(सारणी, ४०)।
+    मुद्रय("नूतनाकारः = ", सूची_दैर्घ्यम्(सारणी))।
+
+    मान वाक्य = "शकुन्तला"।
+    मुद्रय("वर्णसङ्ख्या = ", सूत्र_दैर्घ्यम्(वाक्य))।
+    मुद्रय("प्रथमवर्णः = ", सूत्र_वर्ण(वाक्य, ०))।
+    मुद्रय("अंशः = ", सूत्र_अंश(वाक्य, ०, ५))।
+
+    मान घात = घाताङ्क(०.०)।
+    मुद्रय("घात = ", घात)।
+    मान मूल = वर्गमूल(१६.०)।
+    मुद्रय("मूल = ", मूल)।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+
+        let mut interp = Interpreter::new();
+        interp.stdout_capture = Some(Vec::new());
+        interp.load_program(&program);
+        assert!(interp.run_main().is_ok());
+
+        let stdout = interp.stdout_capture.unwrap();
+        assert_eq!(stdout[0], "प्रारम्भिकः = १०");
+        assert_eq!(stdout[1], "परिवर्तितः = ९९");
+        assert_eq!(stdout[2], "आकारः = ३");
+        assert_eq!(stdout[3], "नूतनाकारः = ४");
+        assert_eq!(stdout[4], "वर्णसङ्ख्या = ८");
+        assert_eq!(stdout[5], "प्रथमवर्णः = श");
+        assert_eq!(stdout[6], "अंशः = शकुन्");
+        assert_eq!(stdout[7], "घात = १.००००");
+        assert_eq!(stdout[8], "मूल = ४.००००");
     }
 }
 
