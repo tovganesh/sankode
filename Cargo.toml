@@ -12,7 +12,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 authors = ["tovganesh"]
-license = "MIT OR Apache-2.0"
+license = "MIT"
 repository = "https://github.com/tovganesh/sankode"
 description = "Pure Devanagari-Native Systems Programming Language"
 
