@@ -466,6 +466,33 @@ cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्प�
 cargo run -p sanskipt -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 ```
 
+### १२.६ तुलनात्मक-बोधः (Comparative Implementations: Sankode vs. Python vs. C)
+
+To facilitate comparative understanding for engineers coming from C and Python backgrounds, the complete LLM implementation has also been authored in **Python** and **C99/C11** inside [`examples/comparative/`](../examples/comparative/):
+
+- **Pure Devanagari Sankode**: [`examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्`](../examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्)
+- **Python Reference**: [`examples/comparative/shakuntala_llm.py`](../examples/comparative/shakuntala_llm.py)
+- **C Reference**: [`examples/comparative/shakuntala_llm.c`](../examples/comparative/shakuntala_llm.c)
+- **Detailed Comparative Analysis & Matrix**: [`examples/comparative/README.md`](../examples/comparative/README.md)
+
+#### Key Architectural Observations
+
+1. **Memory Safety & Ownership (`स्वामित्वम्`)**:
+   - **Sankode**: Compile-time affine ownership system prevents memory leaks and data races with zero garbage collection pauses.
+   - **Python**: Relies on reference counting and a cyclic garbage collector, trading predictable execution latency for programmer convenience.
+   - **C**: Manual allocation via `calloc()` and `free()`, requiring rigorous manual tracking of memory lifetimes.
+
+2. **Native Unicode Strings (`सूत्रम्`)**:
+   - Devanagari Sanskrit characters consist of 3-byte UTF-8 sequences.
+   - **Sankode** provides first-class Unicode character indexing, slicing, splitting (`सूत्र_विभाजय`), and join operations (`सूची_संयोग`).
+   - **C** requires explicit UTF-8 byte boundary decoding (`utf8_char_len`) and platform-specific wide-character file opening APIs (`_wfopen` on Windows).
+
+3. **Bit-Exact Algorithmic Parity**:
+   - All three implementations share the identical 31-bit Linear Congruential Generator (` बीज = (बीज * १६६४५२५ + १०१३९०४२२३) % २१४७४८३६४८ `), Laplace transition smoothing, Negative Log-Likelihood cross-entropy loss, and temperature-scaled softmax generation.
+   - Loss: **`२.७६२३`** (Sankode) = **`2.7623`** (Python) = **`2.7623`** (C).
+   - Perplexity: **`१५.८३६७`** (Sankode) = **`15.8367`** (Python) = **`15.8367`** (C).
+
+
 ---
 
 ## 🎓 Next Steps & Community
