@@ -401,6 +401,7 @@ Sankode provides first-class dynamic lists with Devanagari bracket syntax:
 - `सूची_सृज(आकार: पूर्ण६४, प्रारम्भिक_मान: T) -> सूची`: Allocates a list of given length filled with an initial element.
 - `सूची_दैर्घ्यम्(सू: सूची) -> पूर्ण६४`: Returns the count of elements in the list.
 - `सूची_संयोजय(सू: सूची, मान: T) -> रिक्त`: Appends an element to the end of the list.
+- `सूची_संयोग(सू: सूची, विभाजक: सूत्र) -> सूत्र`: Joins elements of a list into a single delimited string.
 
 ```sankode
 मान विकार्य आव्यूह = सूची_सृज(१०, ०.०)।
@@ -408,11 +409,19 @@ Sankode provides first-class dynamic lists with Devanagari bracket syntax:
 मुद्रय("दैर्घ्यम् = ", सूची_दैर्घ्यम्(आव्यूह))।
 ```
 
-### १२.२ सूत्र-परीक्षणम् (String Introspection Built-ins)
-Strings in Sankode are UTF-8 sequences that can be measured and indexed:
+### १२.२ सूत्र-परीक्षणं संचिका-व्यापारश्च (String & File I/O Built-ins)
+Strings in Sankode are UTF-8 sequences that can be measured, indexed, split, and persisted:
 - `सूत्र_दैर्घ्यम्(वाक्य: सूत्र) -> पूर्ण६४`: Returns the Unicode character count of the string.
 - `सूत्र_वर्ण(वाक्य: सूत्र, सूचक: पूर्ण६४) -> सूत्र`: Extracts the character at the specified index as a single-character string.
 - `सूत्र_अंश(वाक्य: सूत्र, आरम्भ: पूर्ण६४, समाप्ति: पूर्ण६४) -> सूत्र`: Returns the substring slice from `आरम्भ` to `समाप्ति` (exclusive).
+- `सूत्र_विभाजय(वाक्य: सूत्र, विभाजक: सूत्र) -> सूची`: Splits a string by delimiter into a list of strings (or characters if delimiter is empty).
+- `संख्या_पाठ(वाक्य: सूत्र) -> अंश६४`: Parses a Devanagari or ASCII numeric string into a float.
+- `सूत्र_रूप(मान: T) -> सूत्र`: Converts any value into its string representation.
+
+#### संचिका-क्रियाः (File I/O Procedures)
+- `संचिका_पठ(मार्ग: सूत्र) -> सूत्र`: Reads the entire UTF-8 file contents into a string.
+- `संचिका_लेख(मार्ग: सूत्र, विषय: सूत्र) -> रिक्त` (alias: `संचिका_लिख`): Writes text to a file, creating parent directories if needed.
+- `संचिका_विद्यते(मार्ग: सूत्र) -> सत्यम्`: Checks whether a file exists on disk.
 
 ### १२.३ गणित-क्रियाः (Mathematical Built-in Procedures)
 For loss calculation, probabilities, and normalizations:
@@ -434,13 +443,27 @@ In `examples/शाकुन्तल_भाषा_प्रतिरूप.स�
    - Computes cross-entropy loss (negative log-likelihood) and Perplexity metric.
    - Generates novel Sanskrit verse tokens using temperature-controlled softmax probability sampling.
 
-#### Running the LLM:
+#### Running the Basic LLM (4 Verses):
 ```bash
-# Run with the compiled AOT engine
 cargo run -p sankode-cli -- run examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
+```
 
-# Or execute with the Sanskipt script runner
-cargo run -p sanskipt -- examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
+### १२.५ सम्पूर्ण-शाकुन्तल-प्रतिरूपम् (Full Pipeline: File Corpus, Weight Persistence & Inference)
+
+The advanced pipeline in `examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्` demonstrates production-style machine learning workflow:
+1. **Corpus File**: Reads 3,391 characters of Kalidasa's *Abhijnanasakuntalam* from `examples/अभिज्ञानशाकुन्तलम्_मूलम्.पाठ` using `संचिका_पठ`.
+2. **Model Training**: Trains autoregressive bigram transition weights over a 54-token vocabulary.
+3. **Weight Persistence**: Serializes the trained float matrix using `सूची_संयोग` and saves weights to `examples/शाकुन्तल_प्रतिरूप.भार` using `संचिका_लेख`.
+4. **Weight Deserialization**: Loads the model back from disk using `संचिका_पठ`, `सूत्र_विभाजय`, and `संख्या_पाठ`.
+5. **Generative Inference**: Runs temperature-sampled text generation on prompts (`"शकुन्तला"`, `"या सृष्टिः"`, `"दुष्यन्तः"`).
+
+#### Running the Full Pipeline:
+```bash
+# Run with compiled binary toolchain
+cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
+
+# Or run with dynamic Sanskipt runner
+cargo run -p sanskipt -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 ```
 
 ---

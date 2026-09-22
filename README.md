@@ -73,7 +73,10 @@ cargo build --release
 # Run the Sankode compiled hello world example
 cargo run -p sankode-cli -- run examples/नमस्ते_जगत्.सङ्
 
-# Run the pure Sankode LLM trained on Kalidasa's Abhijnanasakuntalam
+# Run the full-text Abhijnanasakuntalam LLM (file corpus, save/load weights, inference)
+cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
+
+# Run the basic Abhijnanasakuntalam LLM example (4 verses)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
 
 # Run a Python-style Sanskipt script without main boilerplate
@@ -111,7 +114,10 @@ sankode/
     ├── नमस्ते_जगत्.सङ्     # Hello World in pure Devanagari
     ├── फिबोनाची.सङ्         # Recursive Fibonacci in pure Devanagari
     ├── स्वामित्व_प्रदर्शनम्.सङ् # Ownership & borrowing demonstration
-    ├── शाकुन्तल_भाषा_प्रतिरूप.सङ् # Pure Sankode Autoregressive LLM trained on Kalidasa's Shakuntala
+    ├── शाकुन्तल_भाषा_प्रतिरूप.सङ् # Basic Autoregressive LLM (4 verses)
+    ├── शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ् # Full-text LLM: File I/O, Save/Load Weights & Inference
+    ├── अभिज्ञानशाकुन्तलम्_मूलम्.पाठ # Authentic Sanskrit corpus (Acts 1-7, 3,391 chars)
+    ├── शाकुन्तल_प्रतिरूप.भार # Serialized model weights & vocabulary
     └── गणना_लिपि.सङ्स्कृ    # Python-style top-level Sanskipt script
 ```
 

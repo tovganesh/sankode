@@ -25,6 +25,10 @@ pub enum RuntimeError {
     StackOverflow(usize),
     #[error("अतिप्रवाहः (Integer overflow): {0}")]
     IntegerOverflow(String),
+    #[error("संचिका-दोषः (File I/O error): {0}")]
+    FileIo(String),
+    #[error("पाठन-दोषः (Parse error): {0}")]
+    ParseError(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -579,6 +583,107 @@ impl Interpreter {
                         Value::Float(f) => return Ok(Value::Float(f)),
                         _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
                     }
+                } else if callee == "संचिका_पठ" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("संचिका_पठ एकं तर्कम् अपेक्षते (मार्गः)".to_string()));
+                    }
+                    let path = match &evaluated_args[0] {
+                        Value::String(s) => s.as_str(),
+                        _ => return Err(RuntimeError::TypeMismatch("संचिका-मार्गः सूत्रं भवेत्".to_string())),
+                    };
+                    let content = std::fs::read_to_string(path).map_err(|e| {
+                        RuntimeError::FileIo(format!("संचिका-पठन-दोषः '{}': {}", path, e))
+                    })?;
+                    let normalized = content.replace("\r\n", "\n");
+                    return Ok(Value::String(normalized));
+                } else if callee == "संचिका_लेख" || callee == "संचिका_लिख" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("संचिका_लेख द्वौ तर्कौ अपेक्षते (मार्गः, विषयः)".to_string()));
+                    }
+                    let path = match &evaluated_args[0] {
+                        Value::String(s) => s.clone(),
+                        _ => return Err(RuntimeError::TypeMismatch("संचिका-मार्गः सूत्रं भवेत्".to_string())),
+                    };
+                    let content = match &evaluated_args[1] {
+                        Value::String(s) => s.clone(),
+                        other => other.display_devanagari(),
+                    };
+                    if let Some(parent) = std::path::Path::new(&path).parent() {
+                        if !parent.as_os_str().is_empty() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                    }
+                    std::fs::write(&path, content).map_err(|e| {
+                        RuntimeError::FileIo(format!("संचिका-लेखन-दोषः '{}': {}", path, e))
+                    })?;
+                    return Ok(Value::Unit);
+                } else if callee == "संचिका_विद्यते" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("संचिका_विद्यते एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    let path = match &evaluated_args[0] {
+                        Value::String(s) => s.as_str(),
+                        _ => return Err(RuntimeError::TypeMismatch("संचिका-मार्गः सूत्रं भवेत्".to_string())),
+                    };
+                    return Ok(Value::Bool(std::path::Path::new(path).exists()));
+                } else if callee == "सूत्र_विभाजय" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("सूत्र_विभाजय द्वौ तर्कौ अपेक्षते (वाक्यम्, विभाजकः)".to_string()));
+                    }
+                    match (&evaluated_args[0], &evaluated_args[1]) {
+                        (Value::String(s), Value::String(delim)) => {
+                            let items: Vec<Value> = if delim.is_empty() {
+                                s.chars().map(|c| Value::String(c.to_string())).collect()
+                            } else {
+                                s.split(delim.as_str()).map(|part| Value::String(part.to_string())).collect()
+                            };
+                            return Ok(Value::List(Rc::new(RefCell::new(items))));
+                        }
+                        _ => return Err(RuntimeError::TypeMismatch("सूत्रद्वयम् अपेक्षितम्".to_string())),
+                    }
+                } else if callee == "सूची_संयोग" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("सूची_संयोग द्वौ तर्कौ अपेक्षते (सूची, विभाजकः)".to_string()));
+                    }
+                    match (&evaluated_args[0], &evaluated_args[1]) {
+                        (Value::List(list), Value::String(delim)) => {
+                            let list_borrow = list.borrow();
+                            let mut str_items = Vec::with_capacity(list_borrow.len());
+                            for item in list_borrow.iter() {
+                                match item {
+                                    Value::String(s) => str_items.push(s.clone()),
+                                    other => str_items.push(other.display_devanagari()),
+                                }
+                            }
+                            return Ok(Value::String(str_items.join(delim)));
+                        }
+                        _ => return Err(RuntimeError::TypeMismatch("सूची सूत्रं च अपेक्षितौ".to_string())),
+                    }
+                } else if callee == "संख्या_पाठ" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("संख्या_पाठ एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    let s = match &evaluated_args[0] {
+                        Value::String(s) => s.as_str(),
+                        _ => return Err(RuntimeError::TypeMismatch("सूत्रम् अपेक्षितम्".to_string())),
+                    };
+                    let ascii_digits: String = s.chars().map(|c| match c {
+                        '०' => '0', '१' => '1', '२' => '2', '३' => '3', '४' => '4',
+                        '५' => '5', '६' => '6', '७' => '7', '८' => '8', '९' => '9',
+                        other => other,
+                    }).collect();
+                    let parsed: f64 = ascii_digits.trim().parse().map_err(|_| {
+                        RuntimeError::ParseError(format!("अमान्या संख्या '{}'", s))
+                    })?;
+                    return Ok(Value::Float(parsed));
+                } else if callee == "सूत्र_रूप" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("सूत्र_रूप एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    match &evaluated_args[0] {
+                        Value::String(s) => return Ok(Value::String(s.clone())),
+                        other => return Ok(Value::String(other.display_devanagari())),
+                    }
                 }
 
                 if let Some(func) = self.functions.get(callee).cloned() {
@@ -745,6 +850,22 @@ impl Interpreter {
                 BinaryOp::Add => Ok(Value::String(format!("{}{}", a, b))),
                 BinaryOp::Equal => Ok(Value::Bool(a == b)),
                 BinaryOp::NotEqual => Ok(Value::Bool(a != b)),
+                _ => Err(RuntimeError::TypeMismatch("अमान्या क्रिया".to_string())),
+            },
+            (Value::String(a), Value::Integer(b)) => match op {
+                BinaryOp::Add => Ok(Value::String(format!("{}{}", a, Value::Integer(b).display_devanagari()))),
+                _ => Err(RuntimeError::TypeMismatch("अमान्या क्रिया".to_string())),
+            },
+            (Value::String(a), Value::Float(b)) => match op {
+                BinaryOp::Add => Ok(Value::String(format!("{}{}", a, Value::Float(b).display_devanagari()))),
+                _ => Err(RuntimeError::TypeMismatch("अमान्या क्रिया".to_string())),
+            },
+            (Value::Integer(a), Value::String(b)) => match op {
+                BinaryOp::Add => Ok(Value::String(format!("{}{}", Value::Integer(a).display_devanagari(), b))),
+                _ => Err(RuntimeError::TypeMismatch("अमान्या क्रिया".to_string())),
+            },
+            (Value::Float(a), Value::String(b)) => match op {
+                BinaryOp::Add => Ok(Value::String(format!("{}{}", Value::Float(a).display_devanagari(), b))),
                 _ => Err(RuntimeError::TypeMismatch("अमान्या क्रिया".to_string())),
             },
             (Value::Bool(a), Value::Bool(b)) => match op {
@@ -954,6 +1075,35 @@ mod tests {
         assert_eq!(stdout[6], "अंशः = शकुन्");
         assert_eq!(stdout[7], "घात = १.००००");
         assert_eq!(stdout[8], "मूल = ४.००००");
+    }
+
+    #[test]
+    fn test_file_io_and_string_utils_execution() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    मान मार्ग = "target/परीक्षण_संचिका.पाठ"।
+    संचिका_लेख(मार्ग, "नमस्ते,जगत्,सङ्कोड")।
+    मान अस्ति = संचिका_विद्यते(मार्ग)।
+    यदि अस्ति == मिथ्या
+        प्रति।
+    इति
+    मान पाठ = संचिका_पठ(मार्ग)।
+    मान भागाः = सूत्र_विभाजय(पाठ, ",")।
+    मान आकार = सूची_दैर्घ्यम्(भागाः)।
+    यदि आकार != ३
+        प्रति।
+    इति
+    मान संयुक्तम् = सूची_संयोग(भागाः, " - ")।
+    मान सं = संख्या_पाठ("१२३.४५")।
+    मान सं_सूत्र = सूत्र_रूप(सं)।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+
+        let mut interp = Interpreter::new();
+        interp.load_program(&program);
+        assert!(interp.run_main().is_ok());
     }
 }
 
