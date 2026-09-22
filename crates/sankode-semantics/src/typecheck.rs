@@ -176,6 +176,70 @@ impl TypeChecker {
                 span: Span::default(),
             },
         );
+        functions.insert(
+            "संचिका_पठ".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra],
+                return_type: Type::Sutra,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "संचिका_लेख".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra, Type::Sutra],
+                return_type: Type::Rikta,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "संचिका_लिख".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra, Type::Sutra],
+                return_type: Type::Rikta,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "संचिका_विद्यते".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra],
+                return_type: Type::Dvaidha,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूत्र_विभाजय".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra, Type::Sutra],
+                return_type: Type::Soochi(Box::new(Type::Sutra)),
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूची_संयोग".to_string(),
+            FuncSignature {
+                params: vec![Type::SoochiAny, Type::Sutra],
+                return_type: Type::Sutra,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "संख्या_पाठ".to_string(),
+            FuncSignature {
+                params: vec![Type::Sutra],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "सूत्र_रूप".to_string(),
+            FuncSignature {
+                params: vec![Type::Unknown],
+                return_type: Type::Sutra,
+                span: Span::default(),
+            },
+        );
 
         Self {
             functions,
@@ -480,7 +544,7 @@ impl TypeChecker {
                     })?;
 
                 let val_ty = self.check_expr(value)?;
-                if expected_field_ty != &val_ty && val_ty != Type::Unknown {
+                if !types_compatible(expected_field_ty, &val_ty) {
                     return Err(TypeError::Mismatch {
                         expected: expected_field_ty.to_string(),
                         found: val_ty.to_string(),
@@ -935,7 +999,7 @@ impl TypeChecker {
                             span: f_expr.span,
                         })?;
 
-                    if expected_ty != &f_ty && f_ty != Type::Unknown {
+                    if !types_compatible(expected_ty, &f_ty) {
                         return Err(TypeError::Mismatch {
                             expected: expected_ty.to_string(),
                             found: f_ty.to_string(),
@@ -1076,6 +1140,25 @@ mod tests {
     मान वर्णः: सूत्र = सूत्र_वर्ण(वाक्य, ०)।
     मान घा: अंश६४ = घाताङ्क(१.०)।
     मान लॉ: अंश६४ = लॉग(२.०)।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        let mut checker = TypeChecker::new();
+        assert!(checker.check_program(&program).is_ok());
+    }
+
+    #[test]
+    fn test_file_io_and_string_utils_typecheck() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    संचिका_लेख("परीक्षण.पाठ", "नमस्ते जगत्")।
+    मान अस्ति: द्वैध = संचिका_विद्यते("परीक्षण.पाठ")।
+    मान पाठ: सूत्र = संचिका_पठ("परीक्षण.पाठ")।
+    मान भागाः: सूची = सूत्र_विभाजय(पाठ, " ")।
+    मान संयुक्तम्: सूत्र = सूची_संयोग(भागाः, "-")।
+    मान संख्या: अंश६४ = संख्या_पाठ("१२.३४")।
+    मान सं_सूत्र: सूत्र = सूत्र_रूप(संख्या)।
 इति
 "#;
         let tokens = Lexer::new(code).tokenize().unwrap();

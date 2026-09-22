@@ -339,7 +339,9 @@ impl BorrowChecker {
             ExprKind::Call { callee, args } => {
                 match callee.as_str() {
                     "मुद्रय" | "सूची_सृज" | "सूत्र_दैर्घ्यम्" | "सूत्र_वर्ण" | "सूत्र_अंश" | "सूची_दैर्घ्यम्"
-                    | "लॉग" | "घाताङ्क" | "वर्गमूल" | "पूर्णाङ्क" | "अंशाङ्क" => {
+                    | "लॉग" | "घाताङ्क" | "वर्गमूल" | "पूर्णाङ्क" | "अंशाङ्क"
+                    | "संचिका_पठ" | "संचिका_लेख" | "संचिका_लिख" | "संचिका_विद्यते"
+                    | "सूत्र_विभाजय" | "सूची_संयोग" | "संख्या_पाठ" | "सूत्र_रूप" => {
                         for arg in args {
                             self.check_expr_read(arg)?;
                         }
@@ -429,6 +431,23 @@ impl BorrowChecker {
             ExprKind::StringLiteral(_) => Type::Sutra,
             ExprKind::BoolLiteral(_) => Type::Dvaidha,
             ExprKind::StructInit { name, .. } => Type::Struct(name.clone()),
+            ExprKind::Call { callee, .. } => match callee.as_str() {
+                "सूची_दैर्घ्यम्" | "सूत्र_दैर्घ्यम्" | "पूर्णाङ्क" => Type::Purna64,
+                "लॉग" | "घाताङ्क" | "वर्गमूल" | "अंशाङ्क" | "संख्या_पाठ" => Type::Ansha64,
+                "संचिका_विद्यते" => Type::Dvaidha,
+                "सूत्र_वर्ण" | "सूत्र_अंश" | "संचिका_पठ" | "सूत्र_रूप" | "सूची_संयोग" => Type::Sutra,
+                "सूची_सृज" | "सूत्र_विभाजय" => Type::SoochiAny,
+                _ => Type::Unknown,
+            },
+            ExprKind::Binary { op, .. } => match op {
+                sankode_core::BinaryOp::Equal
+                | sankode_core::BinaryOp::NotEqual
+                | sankode_core::BinaryOp::Less
+                | sankode_core::BinaryOp::LessEq
+                | sankode_core::BinaryOp::Greater
+                | sankode_core::BinaryOp::GreaterEq => Type::Dvaidha,
+                _ => Type::Unknown,
+            },
             ExprKind::Borrow { is_mut, expr: inner } => {
                 let inner_ty = self.infer_type(inner);
                 if *is_mut {
