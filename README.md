@@ -73,10 +73,14 @@ cargo build --release
 # Run the Sankode compiled hello world example
 cargo run -p sankode-cli -- run examples/नमस्ते_जगत्.सङ्
 
+# Run the ReLU Neural Network Language Model (MLP with non-linear activation)
+cargo run -p sankode-cli -- run examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+
 # Run the full-text Abhijnanasakuntalam LLM (file corpus, save/load weights, inference)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 
-# Run the Python comparative equivalent
+# Run the Python comparative equivalents
+python examples/comparative/shakuntala_relu_llm.py
 python examples/comparative/shakuntala_llm.py
 
 # Run the C comparative equivalent (MSVC on Windows / GCC on Linux)
@@ -122,13 +126,17 @@ sankode/
     ├── फिबोनाची.सङ्         # Recursive Fibonacci in pure Devanagari
     ├── comparative/             # Comparative LLM implementations
     │   ├── README.md            # Paradigm comparison matrix (Sankode vs Python vs C)
-    │   ├── shakuntala_llm.py    # Type-annotated, documented Python equivalent
-    │   └── shakuntala_llm.c     # Standalone C99/C11 equivalent with UTF-8 support
+    │   ├── shakuntala_llm.py    # Type-annotated Python Bigram equivalent
+    │   ├── shakuntala_llm.c     # Standalone C99/C11 Bigram equivalent
+    │   ├── shakuntala_relu_llm.py # Python Multi-Layer Perceptron with ReLU
+    │   └── shakuntala_relu_llm.c  # C99/C11 Multi-Layer Perceptron with ReLU
     ├── स्वामित्व_प्रदर्शनम्.सङ् # Ownership & borrowing demonstration
     ├── शाकुन्तल_भाषा_प्रतिरूप.सङ् # Basic Autoregressive LLM (4 verses)
     ├── शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ् # Full-text LLM: File I/O, Save/Load Weights & Inference
+    ├── शाकुन्तल_ऋजु_प्रतिरूप.सङ् # ReLU Neural Language Model (MLP with non-linear activation)
     ├── अभिज्ञानशाकुन्तलम्_मूलम्.पाठ # Authentic Sanskrit corpus (Acts 1-7, 3,391 chars)
-    ├── शाकुन्तल_प्रतिरूप.भार # Serialized model weights & vocabulary
+    ├── शाकुन्तल_प्रतिरूप.भार # Serialized Bigram model weights
+    ├── शाकुन्तल_ऋजु_प्रतिरूप.भार # Serialized ReLU Neural model weights (W1, b1, W2, b2)
     └── गणना_लिपि.सङ्स्कृ    # Python-style top-level Sanskipt script
 ```
 
