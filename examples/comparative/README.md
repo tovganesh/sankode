@@ -121,8 +121,8 @@ int model_save(const LanguageModel* m, const char* filepath) {
 # Run with compiled toolchain
 cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 
-# Run with dynamic Sanskipt runner
-cargo run -p sanskipt -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
+# Run with dynamic Sanskript runner
+cargo run -p sanskript -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 ```
 
 ### 2. Python Reference

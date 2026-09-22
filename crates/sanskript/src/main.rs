@@ -8,10 +8,10 @@ use std::fs;
 use std::path::PathBuf;
 
 #[derive(ClapParser)]
-#[command(name = "sanskipt")]
+#[command(name = "sanskript")]
 #[command(author = "tovganesh")]
 #[command(version = "0.1.0")]
-#[command(about = "सङ्स्कृ (Sanskipt) - Python-inspired Dynamic Scripting Runtime for Sankode", long_about = None)]
+#[command(about = "सङ्स्कृत् (Sanskript) - Python-inspired Dynamic Scripting Runtime for Sankode", long_about = None)]
 struct Cli {
     /// Script file to execute (.सङ्स्कृ / .सङ्)
     #[arg(value_name = "SCRIPT")]
@@ -90,7 +90,7 @@ fn run_code(source: &str) {
 
 fn run_repl(mut ime_enabled: bool) {
     println!("{}", "=========================================================".cyan());
-    println!("{}", "  ॥ सङ्स्कृ सङ्वादकम् ॥ (Sanskipt v०.१.०)".yellow().bold());
+    println!("{}", "  ॥ सङ्स्कृत् सङ्वादकम् ॥ (Sanskript v०.१.०)".yellow().bold());
     println!("{}", "  Python-Style Dynamic Scripting Shell for Sanskrit");
     println!("  Type code directly. Toggle phonetic typing with ':ime'.");
     println!("  विरामार्थं 'विराम', 'exit', अथवा Ctrl+D लिखन्तु।");

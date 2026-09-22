@@ -20,14 +20,32 @@ struct Cli {
     /// Directly run a script if provided without subcommand
     #[arg(value_name = "FILE")]
     file: Option<PathBuf>,
+
+    /// Run with native AOT compilation for maximum speed
+    #[arg(long)]
+    native: bool,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Execute a Sankode source file (.सङ् / .सङ्स्कृ)
+    /// Execute a Sankode source file (.सङ् / .सङ्स्कृत्)
     Run {
         #[arg(value_name = "FILE")]
         path: PathBuf,
+        /// Compile to native binary and execute directly for maximum speed
+        #[arg(long)]
+        native: bool,
+    },
+    /// Compile a Sankode source file to an optimized native binary via C99 AOT compiler
+    Build {
+        #[arg(value_name = "FILE")]
+        path: PathBuf,
+        /// Output executable path (default: same name as source without extension or .exe)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        /// Emit C code instead of building binary
+        #[arg(long)]
+        emit_c: bool,
     },
     /// Verify types and borrow safety without executing
     Check {
@@ -57,7 +75,14 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Run { path }) => run_file(&path),
+        Some(Commands::Run { path, native }) => {
+            if native || cli.native {
+                run_native(&path);
+            } else {
+                run_file(&path);
+            }
+        }
+        Some(Commands::Build { path, output, emit_c }) => build_file(&path, output, emit_c),
         Some(Commands::Check { path }) => check_file(&path),
         Some(Commands::Tokens { path }) => print_tokens(&path),
         Some(Commands::Parse { path }) => print_ast(&path),
@@ -65,7 +90,11 @@ fn main() {
         Some(Commands::Studio { port }) => launch_studio(port),
         None => {
             if let Some(file) = cli.file {
-                run_file(&file);
+                if cli.native {
+                    run_native(&file);
+                } else {
+                    run_file(&file);
+                }
             } else {
                 run_repl();
             }
@@ -80,6 +109,66 @@ fn run_file(path: &PathBuf) {
     if let Err(e) = interpreter.run_main() {
         eprintln!("{} {}", "निष्पादने दोषः (Runtime error):".red().bold(), e);
         std::process::exit(1);
+    }
+}
+
+fn run_native(path: &PathBuf) {
+    let program = load_and_verify(path);
+    let ext = if cfg!(windows) { "exe" } else { "bin" };
+    let temp_exe = std::env::temp_dir().join(format!("sankode_tmp_{}.{}", std::process::id(), ext));
+    
+    if let Err(e) = sankode_codegen::compile_program_to_binary(&program, &temp_exe) {
+        eprintln!("{} {}", "सङ्कलने दोषः (AOT compilation error):".red().bold(), e);
+        std::process::exit(1);
+    }
+
+    let status = std::process::Command::new(&temp_exe).status();
+    let _ = std::fs::remove_file(&temp_exe);
+    if let Ok(st) = status {
+        if !st.success() {
+            std::process::exit(st.code().unwrap_or(1));
+        }
+    } else if let Err(e) = status {
+        eprintln!("{} {}", "निष्पादने दोषः (Execution error):".red().bold(), e);
+        std::process::exit(1);
+    }
+}
+
+fn build_file(path: &PathBuf, output: Option<PathBuf>, emit_c: bool) {
+    let program = load_and_verify(path);
+    let c_code = match sankode_codegen::generate_c_source(&program) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("{} {}", "सङ्कलने दोषः (Codegen error):".red().bold(), e);
+            std::process::exit(1);
+        }
+    };
+
+    if emit_c {
+        let out_path = output.unwrap_or_else(|| path.with_extension("c"));
+        if let Err(e) = fs::write(&out_path, c_code) {
+            eprintln!("{} संचिकालेखने दोषः: {}", "दोषः:".red().bold(), e);
+            std::process::exit(1);
+        }
+        println!("{} C source emitted to: {}", "✓".green().bold(), out_path.display().to_string().cyan());
+        return;
+    }
+
+    let default_out = if cfg!(windows) {
+        path.with_extension("exe")
+    } else {
+        path.with_extension("")
+    };
+    let out_path = output.unwrap_or(default_out);
+    println!("{} Compiling {} to native machine binary...", "॥ सङ्कोड ॥".cyan().bold(), path.display());
+    match sankode_codegen::compile_to_binary(&c_code, &out_path, None) {
+        Ok(()) => {
+            println!("{} Native binary built successfully: {}", "✓".green().bold(), out_path.display().to_string().green());
+        }
+        Err(e) => {
+            eprintln!("{} {}", "सङ्कलने दोषः (AOT compilation error):".red().bold(), e);
+            std::process::exit(1);
+        }
     }
 }
 

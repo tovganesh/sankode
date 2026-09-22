@@ -16,7 +16,7 @@
 - **Rust-like Memory Safety**: Compile-time affine ownership (`स्वामित्व`), borrowing (`ऋण`), and lifetimes (`आयुः`) with zero runtime garbage-collection pauses.
 - **Dual Runtime**:
   - `sankode`: Native AOT compiled binary toolchain.
-  - `sanskipt`: Dynamic Python-like scripting interpreter and interactive REPL (`सङ्वादक`).
+  - `sanskript`: Dynamic Python-like scripting interpreter and interactive REPL (`सङ्वादक`).
 - **Sankode Studio**: Minimalist IDE with integrated phonetic typing (Roman to Devanagari on the fly).
 
 ---
@@ -56,7 +56,7 @@ It covers:
 - **Functions & Control Flow**: `क्रिया`, `प्रति`, `यदि` / `अन्यथा`, and `यावत्` loops.
 - **Structures & Methods**: `संरचना`, `विधान`, `स्व`, and `चलऋण स्व`.
 - **Affine Ownership**: Rust-like move semantics, immutable borrowing (`ऋण`), and mutable borrowing (`चलऋण`).
-- **Dual Runtime & Studio**: Compiled `sankode`, dynamic `sanskipt` REPL, and web `sankode-studio`.
+- **Dual Runtime & Studio**: Compiled `sankode`, dynamic `sanskript` REPL, and web `sankode-studio`.
 
 ---
 
@@ -74,7 +74,12 @@ cargo build --release
 cargo run -p sankode-cli -- run examples/नमस्ते_जगत्.सङ्
 
 # Run the ReLU Neural Network Language Model (MLP with non-linear activation)
-cargo run -p sankode-cli -- run examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+# Compile to an optimized native binary (10x faster than Python):
+cargo run -p sankode-cli -- build examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ् -o target/shakuntala_relu.exe
+./target/shakuntala_relu.exe
+
+# Or execute with AOT native compilation on the fly:
+cargo run -p sankode-cli -- run --native examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
 
 # Run the full-text Abhijnanasakuntalam LLM (file corpus, save/load weights, inference)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
@@ -90,11 +95,11 @@ cl /utf-8 /O2 examples/comparative/shakuntala_llm.c /Fe:examples/comparative/sha
 # Run the basic Abhijnanasakuntalam LLM example (4 verses)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
 
-# Run a Python-style Sanskipt script without main boilerplate
-cargo run -p sanskipt -- examples/गणना_लिपि.सङ्स्कृ
+# Run a Python-style Sanskript script without main boilerplate
+cargo run -p sanskript -- examples/गणना_लिपि.सङ्स्कृ
 
-# Launch the Sanskipt interactive REPL
-cargo run -p sanskipt
+# Launch the Sanskript interactive REPL
+cargo run -p sanskript
 
 # Launch the Sankode Studio IDE (वेधशाला) in your browser
 cargo run -p sankode-studio
@@ -113,10 +118,11 @@ sankode/
 │   ├── sankode-parser/     # Brace-free recursive descent & Pratt parser
 │   ├── sankode-semantics/  # Static type checker & immutability analysis
 │   ├── sankode-borrowck/   # Affine ownership, move semantics & borrow checker
+│   ├── sankode-codegen/    # Ahead-Of-Time (AOT) C99 native machine code generator
 │   ├── sankode-eval/       # Execution engine & tree-walk runtime
 │   ├── sankode-cli/        # Sankode CLI (`run`, `check`, `repl`, `studio`)
 │   ├── sankode-ime/        # Phonetic transliteration engine (Roman to Devanagari)
-│   ├── sanskipt/           # Python-inspired dynamic scripting runtime & REPL
+│   ├── sanskript/           # Python-inspired dynamic scripting runtime & REPL
 │   └── sankode-studio/     # Embedded web-based visual IDE & dev server
 ├── docs/
 │   ├── TUTORIAL.md             # Complete language tutorial & feature reference
@@ -137,7 +143,7 @@ sankode/
     ├── अभिज्ञानशाकुन्तलम्_मूलम्.पाठ # Authentic Sanskrit corpus (Acts 1-7, 3,391 chars)
     ├── शाकुन्तल_प्रतिरूप.भार # Serialized Bigram model weights
     ├── शाकुन्तल_ऋजु_प्रतिरूप.भार # Serialized ReLU Neural model weights (W1, b1, W2, b2)
-    └── गणना_लिपि.सङ्स्कृ    # Python-style top-level Sanskipt script
+    └── गणना_लिपि.सङ्स्कृ    # Python-style top-level Sanskript script
 ```
 
 ---

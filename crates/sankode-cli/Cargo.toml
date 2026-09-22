@@ -17,6 +17,7 @@ sankode-parser = { path = "../sankode-parser" }
 sankode-semantics = { path = "../sankode-semantics" }
 sankode-borrowck = { path = "../sankode-borrowck" }
 sankode-eval = { path = "../sankode-eval" }
+sankode-codegen = { path = "../sankode-codegen" }
 clap = { workspace = true }
 colored = { workspace = true }
 rustyline = { workspace = true }
