@@ -41,9 +41,10 @@ pub fn is_devanagari_ident_continue(c: char) -> bool {
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str) -> Self {
-        let chars: Vec<(usize, char)> = source.char_indices().collect();
+        let source_clean = source.strip_prefix('\u{feff}').unwrap_or(source);
+        let chars: Vec<(usize, char)> = source_clean.char_indices().collect();
         Self {
-            source,
+            source: source_clean,
             chars,
             cursor: 0,
             line: 1,
@@ -86,7 +87,7 @@ impl<'a> Lexer<'a> {
 
     fn skip_whitespace(&mut self) {
         while let Some(c) = self.peek() {
-            if c.is_whitespace() {
+            if c.is_whitespace() || c == '\u{feff}' {
                 self.advance();
             } else {
                 break;

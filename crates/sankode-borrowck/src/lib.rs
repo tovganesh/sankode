@@ -34,12 +34,14 @@ pub struct BindingState {
 
 pub struct BorrowChecker {
     scopes: Vec<HashMap<String, BindingState>>,
+    temporary_borrows: Vec<(String, bool)>,
 }
 
 impl BorrowChecker {
     pub fn new() -> Self {
         Self {
             scopes: vec![HashMap::new()],
+            temporary_borrows: Vec::new(),
         }
     }
 
@@ -109,6 +111,38 @@ impl BorrowChecker {
     }
 
     fn check_statement(&mut self, stmt: &Statement) -> Result<(), BorrowError> {
+        let res = self.check_statement_internal(stmt);
+        let is_persisted_borrow = match stmt {
+            Statement::VarDecl { init, type_ann, .. } => {
+                let init_ty = if let Some(ann) = type_ann {
+                    Type::from_annotation(ann)
+                } else {
+                    self.infer_type(init)
+                };
+                matches!(init_ty, Type::Reference(_) | Type::MutReference(_))
+            }
+            _ => false,
+        };
+
+        if !is_persisted_borrow {
+            let to_release = std::mem::take(&mut self.temporary_borrows);
+            for (var_name, is_mut) in to_release {
+                if let Some(state) = self.lookup_var_mut(&var_name) {
+                    if is_mut {
+                        state.is_mutably_borrowed = false;
+                    } else if state.shared_borrows > 0 {
+                        state.shared_borrows -= 1;
+                    }
+                }
+            }
+        } else {
+            self.temporary_borrows.clear();
+        }
+
+        res
+    }
+
+    fn check_statement_internal(&mut self, stmt: &Statement) -> Result<(), BorrowError> {
         match stmt {
             Statement::VarDecl {
                 name,
@@ -225,6 +259,17 @@ impl BorrowChecker {
                 }
                 Ok(())
             }
+            Statement::IndexAssignment {
+                target,
+                index,
+                value,
+                ..
+            } => {
+                self.check_expr_read(target)?;
+                self.check_expr_read(index)?;
+                self.check_expr_read_or_move(value)?;
+                Ok(())
+            }
             Statement::Expr(expr) => {
                 self.check_expr_read(expr)?;
                 Ok(())
@@ -278,6 +323,7 @@ impl BorrowChecker {
                             }
                             state.shared_borrows += 1;
                         }
+                        self.temporary_borrows.push((name.clone(), *is_mut));
                     }
                 } else {
                     self.check_expr_read(inner)?;
@@ -291,16 +337,30 @@ impl BorrowChecker {
             }
             ExprKind::Unary { expr: inner, .. } => self.check_expr_read(inner),
             ExprKind::Call { callee, args } => {
-                if callee == "मुद्रय" {
-                    for arg in args {
-                        self.check_expr_read(arg)?;
+                match callee.as_str() {
+                    "मुद्रय" | "सूची_सृज" | "सूत्र_दैर्घ्यम्" | "सूत्र_वर्ण" | "सूत्र_अंश" | "सूची_दैर्घ्यम्"
+                    | "लॉग" | "घाताङ्क" | "वर्गमूल" | "पूर्णाङ्क" | "अंशाङ्क" => {
+                        for arg in args {
+                            self.check_expr_read(arg)?;
+                        }
+                        Ok(())
                     }
-                    return Ok(());
+                    "सूची_संयोजय" => {
+                        if !args.is_empty() {
+                            self.check_expr_read(&args[0])?;
+                        }
+                        for arg in args.iter().skip(1) {
+                            self.check_expr_read_or_move(arg)?;
+                        }
+                        Ok(())
+                    }
+                    _ => {
+                        for arg in args {
+                            self.check_expr_read_or_move(arg)?;
+                        }
+                        Ok(())
+                    }
                 }
-                for arg in args {
-                    self.check_expr_read_or_move(arg)?;
-                }
-                Ok(())
             }
             ExprKind::FieldAccess { target, .. } => {
                 self.check_expr_read(target)?;
@@ -317,6 +377,17 @@ impl BorrowChecker {
                 for (_, f_expr) in fields {
                     self.check_expr_read_or_move(f_expr)?;
                 }
+                Ok(())
+            }
+            ExprKind::ArrayLiteral(elements) => {
+                for elem in elements {
+                    self.check_expr_read_or_move(elem)?;
+                }
+                Ok(())
+            }
+            ExprKind::Index { target, index } => {
+                self.check_expr_read(target)?;
+                self.check_expr_read(index)?;
                 Ok(())
             }
             _ => Ok(()),
@@ -358,6 +429,14 @@ impl BorrowChecker {
             ExprKind::StringLiteral(_) => Type::Sutra,
             ExprKind::BoolLiteral(_) => Type::Dvaidha,
             ExprKind::StructInit { name, .. } => Type::Struct(name.clone()),
+            ExprKind::Borrow { is_mut, expr: inner } => {
+                let inner_ty = self.infer_type(inner);
+                if *is_mut {
+                    Type::MutReference(Box::new(inner_ty))
+                } else {
+                    Type::Reference(Box::new(inner_ty))
+                }
+            }
             _ => Type::Unknown,
         }
     }

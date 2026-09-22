@@ -53,9 +53,10 @@ pub struct Param {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeAnnotation {
-    Simple(String), // e.g., पूर्ण६४, अंश६४, सूत्र, रिक्त, बिन्दु
+    Simple(String), // e.g., पूर्ण६४, अंश६४, सूत्र, रिक्त, बिन्दु, सूची
     Reference(Box<TypeAnnotation>), // ऋण पूर्ण६४
     MutReference(Box<TypeAnnotation>), // चलऋण पूर्ण६४
+    List(Box<TypeAnnotation>), // सूची[पूर्ण६४]
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -78,6 +79,13 @@ pub enum Statement {
     FieldAssignment {
         target: String,
         field: String,
+        value: Expr,
+        span: Span,
+    },
+    /// target[index] = expr।
+    IndexAssignment {
+        target: Box<Expr>,
+        index: Box<Expr>,
         value: Expr,
         span: Span,
     },
@@ -145,6 +153,11 @@ pub enum ExprKind {
     Borrow {
         is_mut: bool,
         expr: Box<Expr>,
+    },
+    ArrayLiteral(Vec<Expr>),
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
     },
 }
 

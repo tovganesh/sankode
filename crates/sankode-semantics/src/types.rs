@@ -20,6 +20,8 @@ pub enum Type {
     Struct(String),
     Reference(Box<Type>),
     MutReference(Box<Type>),
+    Soochi(Box<Type>),
+    SoochiAny,
     Unknown,
 }
 
@@ -41,8 +43,13 @@ impl Type {
             | Type::Varna
             | Type::Rikta
             | Type::Reference(_) => true,
-            // Sutra, Struct, and MutReference are non-Copy (affine move semantics)
-            Type::Sutra | Type::Struct(_) | Type::MutReference(_) | Type::Unknown => false,
+            // Sutra, Struct, MutReference, and Soochi are non-Copy (affine move semantics)
+            Type::Sutra
+            | Type::Struct(_)
+            | Type::MutReference(_)
+            | Type::Soochi(_)
+            | Type::SoochiAny
+            | Type::Unknown => false,
         }
     }
 
@@ -63,8 +70,12 @@ impl Type {
                 "वर्ण" => Type::Varna,
                 "सूत्र" => Type::Sutra,
                 "रिक्त" => Type::Rikta,
+                "सूची" => Type::SoochiAny,
                 other => Type::Struct(other.to_string()),
             },
+            TypeAnnotation::List(inner) => {
+                Type::Soochi(Box::new(Self::from_annotation(inner)))
+            }
             TypeAnnotation::Reference(inner) => {
                 Type::Reference(Box::new(Self::from_annotation(inner)))
             }
@@ -95,6 +106,8 @@ impl fmt::Display for Type {
             Type::Struct(name) => write!(f, "{}", name),
             Type::Reference(inner) => write!(f, "ऋण {}", inner),
             Type::MutReference(inner) => write!(f, "चलऋण {}", inner),
+            Type::Soochi(inner) => write!(f, "सूची[{}]", inner),
+            Type::SoochiAny => write!(f, "सूची"),
             Type::Unknown => write!(f, "अज्ञात"),
         }
     }
