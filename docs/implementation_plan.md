@@ -1,4 +1,4 @@
-# Sankode & Sanskipt: Language Specification & Implementation Plan
+# Sankode & Sanskript: Language Specification & Implementation Plan
 **A Pure Devanagari-Native Systems Programming Language, Memory-Safe Compiler, Scripting Runtime, and Bespoke IDE**
 
 ---
@@ -8,12 +8,12 @@
 **Sankode** (सङ्कोड) is a compiled, strongly typed, memory-safe systems programming language where code, keywords, identifiers, and literals are authored entirely in **Devanagari script**. It eliminates foreign syntactic artifacts such as curly brackets `{ }` and western numerals, replacing them with a structured grammar rooted in classical Sanskrit phonology and Paninian formal conciseness (*lāghava* - लाघव).
 
 ### Key Architectural Pillars
-1. **Devanagari Orthography**: All source files (`.सङ्` for Sankode, `.सङ्स्कृ` for Sanskipt) are UTF-8 Devanagari texts. Literals use Devanagari numerals (`०`–`९`).
+1. **Devanagari Orthography**: All source files (`.सङ्` for Sankode, `.सङ्स्कृ` for Sanskript) are UTF-8 Devanagari texts. Literals use Devanagari numerals (`०`–`९`).
 2. **Brace-Free Structural Grammar**: No curly braces (`{ }`). Block scopes and expressions are delimited using unambiguous Sanskrit grammatical markers (e.g., `आरम्भ`...`इति` or sutra-style clause markers with Danda `।` and Double Danda `॥`).
 3. **Rust-Equivalent Memory Safety**: Affine type system with explicit Ownership (`स्वामित्व`), Borrowing (`ऋण`), Mutable Borrowing (`विकार्य ऋण`), and Lifetimes (`आयुः`), guaranteeing zero-cost memory safety without a garbage collector.
 4. **Dual Runtime Strategy**:
    - **Sankode (`sankode`)**: Ahead-Of-Time (AOT) compiled to native machine code via Cranelift / LLVM.
-   - **Sanskipt (`sanskipt`)**: Dynamic, interactive script interpreter and bytecode VM modeled after Python's rapid scripting workflow and high-level ergonomics.
+   - **Sanskript (`sanskript`)**: Dynamic, interactive script interpreter and bytecode VM modeled after Python's rapid scripting workflow and high-level ergonomics.
 5. **Sankode Studio (Bespoke Minimal IDE)**: A developer environment featuring real-time phonetic transliteration (typing `kriya` seamlessly renders `क्रिया`, `1` renders `१`), Devanagari typography engine, LSP integration, and dual-mode execution.
 
 ---
@@ -168,17 +168,17 @@ Sankode implements an affine type system enforced statically at compile time:
 
 ---
 
-## 6. Sanskipt: The Interactive Dynamic Scripting Layer
+## 6. Sanskript: The Interactive Dynamic Scripting Layer
 
-While `sankode` is strictly typed and AOT-compiled, **Sanskipt** (`.सङ्स्कृ`) provides a dynamic, Python-like environment for rapid prototyping, data science, scripting, and educational exploration.
+While `sankode` is strictly typed and AOT-compiled, **Sanskript** (`.सङ्स्कृ`) provides a dynamic, Python-like environment for rapid prototyping, data science, scripting, and educational exploration.
 
-### 6.1 Design Philosophy of Sanskipt
+### 6.1 Design Philosophy of Sanskript
 - **Python-Like Dynamic Semantics**: Variables do not require static type annotations; types are associated with values at runtime.
-- **Same Devanagari Syntax**: Uses identical keywords (`क्रिया`, `यदि`, `इति`, `यावत्`), ensuring code learned in Sanskipt translates directly into Sankode.
+- **Same Devanagari Syntax**: Uses identical keywords (`क्रिया`, `यदि`, `इति`, `यावत्`), ensuring code learned in Sanskript translates directly into Sankode.
 - **Reference Counted Garbage Collection (RC + Cycle Collector)**: Automatic memory management for scripts.
 - **Interactive REPL (`सङ्वादक`)**:
   ```text
-  ॥ सङ्स्कृ सङ्वादकम् (Sanskipt v०.१.०) ॥
+  ॥ सङ्स्कृ सङ्वादकम् (Sanskript v०.१.०) ॥
   [सहायार्थं 'सहायता()' लिखन्तु]
   
   >>> मान सूची = [१, २, ३, ४, ५]
@@ -206,7 +206,7 @@ Writing Devanagari without a dedicated physical keyboard is often cumbersome. **
    - Borrow checker visualization: highlighting lifetimes, moved variables, and active borrows in distinct colors.
    - Autocomplete in Devanagari for keywords and symbols.
 4. **Dual-Mode Runner**:
-   - `F5` / `सञ्चालन`: Instantly runs current script in `sanskipt` VM.
+   - `F5` / `सञ्चालन`: Instantly runs current script in `sanskript` VM.
    - `Ctrl+Shift+B` / `सङ्कलन`: Compiles current project with `sankode` into native binary and launches debugger.
 
 ---
@@ -230,9 +230,9 @@ graph TD
         J --> K[Native Executable .exe / ELF]
     end
     
-    subgraph Sanskipt Interpreter
-        E -->|sanskipt| L[Dynamic Bytecode Compiler]
-        L --> M[Sanskipt VM & Runtime GC]
+    subgraph Sanskript Interpreter
+        E -->|sanskript| L[Dynamic Bytecode Compiler]
+        L --> M[Sanskript VM & Runtime GC]
         M --> N[Immediate Script Output / REPL]
     end
     
@@ -267,8 +267,8 @@ graph TD
 - [ ] Generate native binaries on Windows (`.exe`), Linux, and macOS.
 - [ ] Implement standard library primitives (`sankode-stdlib`): console I/O (`मुद्रय`), math (`गणित`), strings (`सूत्र`).
 
-### Phase 5: Sanskipt Dynamic VM & REPL (Weeks 14–16)
-- [ ] Build `sanskipt` bytecode compiler and stack-based VM (`sanskipt-vm`).
+### Phase 5: Sanskript Dynamic VM & REPL (Weeks 14–16)
+- [ ] Build `sanskript` bytecode compiler and stack-based VM (`sanskript-vm`).
 - [ ] Dynamic object model with reference counting.
 - [ ] Interactive REPL with syntax colorization, command history, and bilingual error messaging.
 
@@ -288,5 +288,5 @@ graph TD
    - Reject use-after-move.
    - Reject simultaneous mutable and immutable borrows.
    - Reject returning references to stack-allocated variables.
-4. **Execution Parity Tests**: Verify identical numerical and algorithmic results between `sankode` compiled binary and `sanskipt` interpreter execution.
+4. **Execution Parity Tests**: Verify identical numerical and algorithmic results between `sankode` compiled binary and `sanskript` interpreter execution.
 5. **IDE Usability Tests**: Validate typing velocity and transliteration accuracy for developers using standard QWERTY keyboards.

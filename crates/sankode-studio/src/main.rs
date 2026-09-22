@@ -17,7 +17,7 @@ use std::net::{TcpListener, TcpStream};
 #[command(name = "sankode-studio")]
 #[command(author = "tovganesh")]
 #[command(version = "0.1.0")]
-#[command(about = "॥ सङ्कोड वेधशाला ॥ - Minimal IDE for Sankode and Sanskipt", long_about = None)]
+#[command(about = "॥ सङ्कोड वेधशाला ॥ - Minimal IDE for Sankode and Sanskript", long_about = None)]
 struct Cli {
     /// Port to bind the IDE web server to
     #[arg(short, long, default_value_t = 4040)]
@@ -78,7 +78,7 @@ fn main() {
 
     println!("{}", "=========================================================".cyan());
     println!("{}", "  ॥ सङ्कोड वेधशाला ॥ (Sankode Studio v०.१.०)".yellow().bold());
-    println!("  Minimal Devanagari IDE for Sankode & Sanskipt");
+    println!("  Minimal Devanagari IDE for Sankode & Sanskript");
     println!("  सङ्केतवेधशाला अत्र उपलब्धा अस्ति:");
     println!("  {}", format!("http://{}", addr).green().bold());
     println!("  विरामार्थं Ctrl+C नुदन्तु। (Press Ctrl+C to stop)");

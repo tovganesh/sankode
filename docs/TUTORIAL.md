@@ -17,7 +17,7 @@ Welcome to **Sankode** (सङ्कोड) — a systems and scripting programm
 7. [नियन्त्रण-प्रवाहः (Control Flow: If & Loops)](#७-नियन्त्रण-प्रवाहः-control-flow-if--loops)
 8. [संरचना विधानं च (Structs & Methods)](#८-संरचना-विधानं-च-structs--methods)
 9. [स्वामित्वम् ऋणं च (Ownership & Borrowing)](#९-स्वामित्वम्-ऋणं-च-ownership--borrowing)
-10. [साधनानि (Tooling: Sankode, Sanskipt & Studio)](#१०-साधनानि-tooling-sankode-sanskipt--studio)
+10. [साधनानि (Tooling: Sankode, Sanskript & Studio)](#१०-साधनानि-tooling-sankode-sanskript--studio)
 11. [व्यावहारिक-उदाहरणानि (Practical Examples)](#११-व्यावहारिक-उदाहरणानि-practical-examples)
 12. [उन्नत-विषयाः: सूचयः, गणितम्, बृहद्-भाषा-प्रतिरूपम् (Advanced: Lists, Math & LLMs)](#१२-उन्नत-विषयाः-सूचयः-गणितम्-बृहद्-भाषा-प्रतिरूपम्-advanced-lists-math--llms)
 
@@ -64,11 +64,11 @@ You can write Sankode using any standard Devanagari keyboard (InScript or Google
 | `0 1 2 ... 9` | `० १ २ ... ९` | Devanagari digits |
 
 ### Using Phonetic Typing in Tools:
-- **Sanskipt CLI**: Pass `--ime` to automatically transliterate source files on the fly:
+- **Sanskript CLI**: Pass `--ime` to automatically transliterate source files on the fly:
   ```bash
-  cargo run -p sanskipt -- --ime script_in_roman.txt
+  cargo run -p sanskript -- --ime script_in_roman.txt
   ```
-- **Sanskipt REPL**: Type `:ime` inside the REPL to toggle live Roman-to-Devanagari typing.
+- **Sanskript REPL**: Type `:ime` inside the REPL to toggle live Roman-to-Devanagari typing.
 - **Sankode Studio**: Click the **Phonetic IME (सक्रिय)** toggle in the top bar to type phonetic Roman and have it converted in real time.
 
 ---
@@ -266,31 +266,41 @@ Instead of moving ownership, you can borrow values:
 
 ---
 
-## १०. साधनानि (Tooling: Sankode, Sanskipt & Studio)
+## १०. साधनानि (Tooling: Sankode, Sanskript & Studio)
 
 The Sankode repository provides three execution modes:
 
 ### 10.1 The Native Compiler Toolchain (`sankode`)
-Validates types, checks ownership, and executes compiled programs:
+Validates types, checks ownership, and compiles/executes programs at native machine speed via the Ahead-Of-Time (AOT) C99 backend:
 ```bash
 # Verify static types and borrowing rules without running
 cargo run -p sankode-cli -- check examples/नमस्ते_जगत्.सङ्
 
-# Run program
+# Build an optimized native executable (10x-50x faster than Python):
+cargo run -p sankode-cli -- build examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ् -o target/shakuntala_relu.exe
+./target/shakuntala_relu.exe
+
+# Run with on-the-fly AOT native compilation:
+cargo run -p sankode-cli -- run --native examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+
+# Emit clean, standalone C99 source code:
+cargo run -p sankode-cli -- build examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ् --emit-c
+
+# Run via interpreter:
 cargo run -p sankode-cli -- run examples/नमस्ते_जगत्.सङ्
 ```
 
-### 10.2 The Dynamic Scripting Engine (`sanskipt`)
+### 10.2 The Dynamic Scripting Engine (`sanskript`)
 A Python-inspired interpreter that executes top-level code directly:
 ```bash
 # Execute a script
-cargo run -p sanskipt -- examples/गणना_लिपि.सङ्स्कृ
+cargo run -p sanskript -- examples/गणना_लिपि.सङ्स्कृ
 
 # Execute a one-liner command
-cargo run -p sanskipt -- -c 'मान क = ५। मुद्रय(क * २)।'
+cargo run -p sanskript -- -c 'मान क = ५। मुद्रय(क * २)।'
 
 # Interactive REPL shell
-cargo run -p sanskipt
+cargo run -p sanskript
 ```
 
 Inside the REPL:
@@ -305,7 +315,7 @@ cargo run -p sankode-studio
 cargo run -p sankode-cli -- studio
 ```
 Features:
-- **Dual Execution**: Run in either compiled `sankode` mode (with strict type & borrow checking) or rapid `sanskipt` mode.
+- **Dual Execution**: Run in either compiled `sankode` mode (with strict type & borrow checking) or rapid `sanskript` mode.
 - **Deep Diagnostics**: Inspect the live Token stream and AST tree for any program.
 - **Phonetic Transliteration**: Type `kriya mukhya() |` and see it transform into `क्रिया मुख्य() ।` in real time.
 
@@ -467,8 +477,8 @@ The advanced pipeline in `examples/शाकुन्तल_सम्पूर�
 # Run with compiled binary toolchain
 cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 
-# Or run with dynamic Sanskipt runner
-cargo run -p sanskipt -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
+# Or run with dynamic Sanskript runner
+cargo run -p sanskript -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 ```
 
 
@@ -490,8 +500,8 @@ cargo run -p sankode-cli -- check examples/शाकुन्तल_ऋजु_�
 # Run with compiled toolchain
 cargo run -p sankode-cli -- run examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
 
-# Run with Sanskipt dynamic script runner
-cargo run -p sanskipt -- examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+# Run with Sanskript dynamic script runner
+cargo run -p sanskript -- examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
 ```
 
 ### १२.६ तुलनात्मक-बोधः (Comparative Implementations: Sankode vs. Python vs. C)

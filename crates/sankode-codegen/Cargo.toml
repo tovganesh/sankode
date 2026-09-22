@@ -1,14 +1,16 @@
 [package]
-name = "sankode-eval"
+name = "sankode-codegen"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Tree-walk interpreter and execution runtime for Sankode and Sanskript"
+description = "AOT Native Compiler and C Code Generator for Sankode"
 
 [dependencies]
 sankode-core = { path = "../sankode-core" }
+thiserror.workspace = true
+colored.workspace = true
+
+[dev-dependencies]
 sankode-lexer = { path = "../sankode-lexer" }
 sankode-parser = { path = "../sankode-parser" }
-thiserror = { workspace = true }
-colored = { workspace = true }

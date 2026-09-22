@@ -368,7 +368,7 @@ pub const STUDIO_HTML: &str = r#"<!DOCTYPE html>
                 <span>🛡️</span> सत्यापय
             </button>
 
-            <button class="btn btn-script" onclick="runSanskipt()" title="Run as dynamic Python-style script">
+            <button class="btn btn-script" onclick="runSanskript()" title="Run as dynamic Python-style script">
                 <span>⚡</span> सङ्स्कृ
             </button>
 
@@ -539,8 +539,8 @@ pub const STUDIO_HTML: &str = r#"<!DOCTYPE html>
             await executeCode('sankode');
         }
 
-        async function runSanskipt() {
-            await executeCode('sanskipt');
+        async function runSanskript() {
+            await executeCode('sanskript');
         }
 
         async function executeCode(mode) {
