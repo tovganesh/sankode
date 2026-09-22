@@ -152,3 +152,44 @@ All three programs produce identical generative inference:
 | `"शकुन्तला"` | `शकुन्तलान श्रदावमश्यानुन्रचिकुच्कभिथिताभढभि वि चङ॥ पितिदं` |
 | `"या सृष्टिः"` | `या सृष्टिः॥ स्रि स्तनाि कलि विनानुरामि चटचञञछआछा वि पप्वेष्ल` |
 | `"दुष्यन्तः"` | `दुष्यन्तःङैडविजन्मठमन् भपि वगजडवत्ये द्यियेन तिनेिर्पिना वि` |
+
+---
+
+## 🧠 ReLU Neural Network Language Model (ऋजु-भाषा-प्रतिरूपम्)
+
+In addition to the classical Bigram Markov Transition model, this directory also provides full **Multi-Layer Perceptron (MLP) Neural Network Language Models** featuring non-linear **ReLU activation (`रेलू`)**:
+
+1. **Pure Devanagari Sankode**: [`examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्`](../शाकुन्तल_ऋजु_प्रतिरूप.सङ्)
+2. **Python Reference**: [`examples/comparative/shakuntala_relu_llm.py`](shakuntala_relu_llm.py)
+3. **C Reference (C99/C11)**: [`examples/comparative/shakuntala_relu_llm.c`](shakuntala_relu_llm.c)
+
+### Mathematical Architecture
+- **Layer 1**: $z_1 = W_1[:, c_t] + b_1$, where $W_1 \in \mathbb{R}^{32 \times 54}, b_1 \in \mathbb{R}^{32}$
+- **ReLU Activation**: $h = \text{ReLU}(z_1) = \max(0.0, z_1)$
+- **Layer 2**: $\text{logits} = W_2 h + b_2$, where $W_2 \in \mathbb{R}^{54 \times 32}, b_2 \in \mathbb{R}^{54}$
+- **Softmax Temperature Scaling**: $P(c_{t+1} = v \mid c_t) = \frac{\exp((\text{logits}[v] - \max(\text{logits})) / T)}{\sum_j \exp((\text{logits}[j] - \max(\text{logits})) / T)}$
+- **Loss & Perplexity**: Negative Log-Likelihood Cross-Entropy & $e^{\mathcal{L}}$
+
+### 📊 Metric Parity Across All 3 Implementations
+
+| Metric | **सङ्कोड (Sankode)** | **Python** | **C (C99/C11)** |
+|---|---|---|---|
+| **Model Type** | Multi-Layer Perceptron | Multi-Layer Perceptron | Multi-Layer Perceptron |
+| **Hidden Dimension ($H$)** | ३२ (32) | 32 | 32 |
+| **Total Parameters** | ३,५४२ (3,542) | 3,542 | 3,542 |
+| **Cross-Entropy Loss (NLL)** | **`२.५६५५`** | **`2.5655`** | **`2.5655`** |
+| **Perplexity ($e^{\mathcal{L}}$)** | **`१३.००६९`** | **`13.0069`** | **`13.0069`** |
+| **Prompt 1 (`"शकुन्तला"`) Output** | `शकुन्तला पिजित्विषुतिरास्चितुम्तितस्यातुच दानेनिस्यतीश्तस्` | `शकुन्तला पिजित्विषुतिरास्चितुम्तितस्यातुच दानेनिस्यतीश्तस्` | `शकुन्तला पिजित्विषुतिरास्चितुम्तितस्यातुच दानेनिस्यतीश्तस्` |
+
+### Execution Commands:
+```bash
+# 1. Sankode
+cargo run -p sankode-cli -- run examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+
+# 2. Python
+python examples/comparative/shakuntala_relu_llm.py
+
+# 3. C
+cl /utf-8 /O2 examples/comparative/shakuntala_relu_llm.c /Fe:examples/comparative/shakuntala_relu_llm.exe
+./examples/comparative/shakuntala_relu_llm.exe
+```

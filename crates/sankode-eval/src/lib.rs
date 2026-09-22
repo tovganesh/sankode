@@ -545,6 +545,46 @@ impl Interpreter {
                         _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
                     };
                     return Ok(Value::Float(num.ln()));
+                } else if callee == "रेलू" {
+                    if evaluated_args.len() != 1 {
+                        return Err(RuntimeError::TypeMismatch("रेलू एकं तर्कम् अपेक्षते".to_string()));
+                    }
+                    let num = match evaluated_args[0] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    return Ok(Value::Float(if num > 0.0 { num } else { 0.0 }));
+                } else if callee == "महत्तम" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("महत्तम द्वौ तर्कौ अपेक्षते".to_string()));
+                    }
+                    let a = match evaluated_args[0] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    let b = match evaluated_args[1] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    return Ok(Value::Float(if a > b { a } else { b }));
+                } else if callee == "न्यूनतम" {
+                    if evaluated_args.len() != 2 {
+                        return Err(RuntimeError::TypeMismatch("न्यूनतम द्वौ तर्कौ अपेक्षते".to_string()));
+                    }
+                    let a = match evaluated_args[0] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    let b = match evaluated_args[1] {
+                        Value::Float(f) => f,
+                        Value::Integer(n) => n as f64,
+                        _ => return Err(RuntimeError::TypeMismatch("संख्या अपेक्षिता".to_string())),
+                    };
+                    return Ok(Value::Float(if a < b { a } else { b }));
                 } else if callee == "घाताङ्क" {
                     if evaluated_args.len() != 1 {
                         return Err(RuntimeError::TypeMismatch("घाताङ्क एकं तर्कम् अपेक्षते".to_string()));
@@ -1105,6 +1145,35 @@ mod tests {
         interp.load_program(&program);
         assert!(interp.run_main().is_ok());
     }
+
+    #[test]
+    fn test_relu_and_extrema_execution() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    मान ऋ = ०.० - ५.०।
+    मान ऋ_रेलू = रेलू(ऋ)।
+    मुद्रय("ऋ_रेलू = ", ऋ_रेलू)।
+    मान ध = ५.५।
+    मान ध_रेलू = रेलू(ध)।
+    मुद्रय("ध_रेलू = ", ध_रेलू)।
+    मान म = महत्तम(१०.०, २०.०)।
+    मुद्रय("महत्तम = ", म)।
+    मान न = न्यूनतम(१०.०, २०.०)।
+    मुद्रय("न्यूनतम = ", न)।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+
+        let mut interp = Interpreter::new();
+        interp.stdout_capture = Some(Vec::new());
+        interp.load_program(&program);
+        assert!(interp.run_main().is_ok());
+
+        let stdout = interp.stdout_capture.unwrap();
+        assert_eq!(stdout[0], "ऋ_रेलू = ०.००००");
+        assert_eq!(stdout[1], "ध_रेलू = ५.५०००");
+        assert_eq!(stdout[2], "महत्तम = २०.००००");
+        assert_eq!(stdout[3], "न्यूनतम = १०.००००");
+    }
 }
-
-

@@ -145,6 +145,30 @@ impl TypeChecker {
             },
         );
         functions.insert(
+            "रेलू".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "महत्तम".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64, Type::Ansha64],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
+            "न्यूनतम".to_string(),
+            FuncSignature {
+                params: vec![Type::Ansha64, Type::Ansha64],
+                return_type: Type::Ansha64,
+                span: Span::default(),
+            },
+        );
+        functions.insert(
             "घाताङ्क".to_string(),
             FuncSignature {
                 params: vec![Type::Ansha64],
@@ -1166,5 +1190,20 @@ mod tests {
         let mut checker = TypeChecker::new();
         assert!(checker.check_program(&program).is_ok());
     }
-}
 
+    #[test]
+    fn test_relu_typecheck() {
+        let code = r#"
+क्रिया मुख्य() -> रिक्त
+    मान ऋ = ०.० - ३.०।
+    मान रे: अंश६४ = रेलू(ऋ)।
+    मान म: अंश६४ = महत्तम(रे, ५.०)।
+    मान न: अंश६४ = न्यूनतम(रे, ५.०)।
+इति
+"#;
+        let tokens = Lexer::new(code).tokenize().unwrap();
+        let program = Parser::new(tokens).parse_program().unwrap();
+        let mut tc = TypeChecker::new();
+        assert!(tc.check_program(&program).is_ok());
+    }
+}

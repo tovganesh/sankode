@@ -418,6 +418,11 @@ Strings in Sankode are UTF-8 sequences that can be measured, indexed, split, and
 - `संख्या_पाठ(वाक्य: सूत्र) -> अंश६४`: Parses a Devanagari or ASCII numeric string into a float.
 - `सूत्र_रूप(मान: T) -> सूत्र`: Converts any value into its string representation.
 
+#### तार्किक-गणितीय-सक्रियकाः (Mathematical & Neural Activation Built-ins)
+- `रेलू(मान: अंश६४) -> अंश६४`: Rectified Linear Unit non-linear activation (returns $\max(0.0, \text{मान})$).
+- `महत्तम(अ: अंश६४, ब: अंश६४) -> अंश६४`: Returns the maximum of two floating-point values.
+- `न्यूनतम(अ: अंश६४, ब: अंश६४) -> अंश६४`: Returns the minimum of two floating-point values.
+
 #### संचिका-क्रियाः (File I/O Procedures)
 - `संचिका_पठ(मार्ग: सूत्र) -> सूत्र`: Reads the entire UTF-8 file contents into a string.
 - `संचिका_लेख(मार्ग: सूत्र, विषय: सूत्र) -> रिक्त` (alias: `संचिका_लिख`): Writes text to a file, creating parent directories if needed.
@@ -464,6 +469,29 @@ cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्प�
 
 # Or run with dynamic Sanskipt runner
 cargo run -p sanskipt -- examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
+```
+
+
+### १२.७ ऋजु-भाषा-प्रतिरूपम् (ReLU Neural Network Language Model)
+
+Extending beyond linear n-gram transitions, `examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्` implements a complete **Multi-Layer Perceptron (MLP)** character-level neural language model:
+
+1. **Layer 1 Projection**: Multiplies the input character embedding by weight matrix `भार_१` ($H \times V$) and adds bias `पक्षपात_१` ($H$).
+2. **ReLU Activation (`रेलू`)**: Applies the native `रेलू` built-in procedure to extract sparse, non-linear hidden representations.
+3. **Layer 2 Logits**: Projects the hidden state $h$ to vocabulary logits using `भार_२` ($V \times H$) and bias `पक्षपात_२` ($V$).
+4. **Softmax Temperature Scaling**: Computes normalized categorical probabilities with configurable sampling temperature.
+5. **Loss & Perplexity**: Evaluates Negative Log-Likelihood cross-entropy loss (`२.५६५५`) and perplexity (`१३.००६९`).
+6. **Multi-Section Weight Persistence**: Saves and restores model parameters to/from `examples/शाकुन्तल_ऋजु_प्रतिरूप.भार` using `===खण्ड===` delimiters.
+
+```bash
+# Verify static safety
+cargo run -p sankode-cli -- check examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+
+# Run with compiled toolchain
+cargo run -p sankode-cli -- run examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
+
+# Run with Sanskipt dynamic script runner
+cargo run -p sanskipt -- examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
 ```
 
 ### १२.६ तुलनात्मक-बोधः (Comparative Implementations: Sankode vs. Python vs. C)
