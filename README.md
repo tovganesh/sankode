@@ -76,6 +76,13 @@ cargo run -p sankode-cli -- run examples/नमस्ते_जगत्.सङ�
 # Run the full-text Abhijnanasakuntalam LLM (file corpus, save/load weights, inference)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 
+# Run the Python comparative equivalent
+python examples/comparative/shakuntala_llm.py
+
+# Run the C comparative equivalent (MSVC on Windows / GCC on Linux)
+cl /utf-8 /O2 examples/comparative/shakuntala_llm.c /Fe:examples/comparative/shakuntala_llm.exe
+./examples/comparative/shakuntala_llm.exe
+
 # Run the basic Abhijnanasakuntalam LLM example (4 verses)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_भाषा_प्रतिरूप.सङ्
 
@@ -113,6 +120,10 @@ sankode/
 └── examples/
     ├── नमस्ते_जगत्.सङ्     # Hello World in pure Devanagari
     ├── फिबोनाची.सङ्         # Recursive Fibonacci in pure Devanagari
+    ├── comparative/             # Comparative LLM implementations
+    │   ├── README.md            # Paradigm comparison matrix (Sankode vs Python vs C)
+    │   ├── shakuntala_llm.py    # Type-annotated, documented Python equivalent
+    │   └── shakuntala_llm.c     # Standalone C99/C11 equivalent with UTF-8 support
     ├── स्वामित्व_प्रदर्शनम्.सङ् # Ownership & borrowing demonstration
     ├── शाकुन्तल_भाषा_प्रतिरूप.सङ् # Basic Autoregressive LLM (4 verses)
     ├── शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ् # Full-text LLM: File I/O, Save/Load Weights & Inference
