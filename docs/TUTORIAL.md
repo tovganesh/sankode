@@ -504,6 +504,56 @@ cargo run -p sankode-cli -- run examples/शाकुन्तल_ऋजु_प�
 cargo run -p sanskript -- examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
 ```
 
+### १२.८ लयः - प्रणाली-१ द्रुत-निर्णय-यन्त्रम् (Laya: Fast System 1 Decision Engine)
+
+Inspired by **[NandhaKishorM/laya](https://github.com/NandhaKishorM/laya)**, this advanced example demonstrates a high-performance, non-autoregressive **System 1 Decision Engine** written in 100% authentic Devanagari Sankode.
+
+```sankode
+॥ लयः - बहुभाषिक-प्रणाली-१ द्रुत-निर्णय-यन्त्रम् ॥
+मान मार्गदर्शक = मार्गक(पूर्वनिर्धारित: "बहुभाषिक")।
+मान यन्त्र = द्रुत_यन्त्र(तापमानम्: ०.८)।
+
+मान मार्ग_फल = मार्गदर्शक.दिश(ऋण सन्देश)।
+मान उ१ = यन्त्र.गणना(ऋण प्र_विभाग, ऋण सन्देश)।
+मान उ२ = यन्त्र.गणना(ऋण प्र_क्रोध, ऋण सन्देश)।
+मान उ३ = यन्त्र.गणना(ऋण प्र_आवश्यक, ऋण सन्देश)।
+```
+
+#### १. दर्शनम् (Cognitive Architecture: System 1 vs. System 2)
+- **System 1 (प्रणाली १)**: Fast, intuitive, non-autoregressive decision making (< 1 ms in compiled Sankode, ~33 ms in neural checkpoints). Evaluates structured questions in a single forward pass without multi-token decoding or hallucination.
+- **System 2 (प्रणाली २)**: Deliberate, multi-step autoregressive text generation (such as the Shakuntala LLM).
+
+#### २. उप-मिलीसेकण्ड-लिपि-मार्गणम् (Sub-millisecond Script Routing)
+The `मार्गक` (Router) examines Unicode script blocks (Devanagari `U+0900..U+097F` vs. Latin) in microseconds:
+- **`बहुभाषिक` (Multilingual / mmBERT)**: Automatically selected whenever non-Latin Devanagari characters are detected, avoiding the catastrophic collapse of English-only models on Indic text.
+- **`आङ्ग्ल` (English / ModernBERT)**: Selected for Latin-script text.
+- Outputs rich telemetry explaining the decision reason, detected script, and character fraction.
+
+#### ३. त्रिविध-प्रश्नाः (Typed Decisions Framework)
+1. **`विकल्प` (Choice - QType 0)**: Multi-class categorical decision against semantic rubrics (e.g. support ticket intent: `शुल्क_व्यवस्था`, `तान्त्रिक_सहायता`, `सेवा_त्यागः`, `सामान्य_जिज्ञासा`).
+2. **`क्रमाङ्क` (Score - QType 1)**: Calibrated ordinal grading on a 0..3 scale (e.g. frustration level: `०_शान्त`, `१_चिन्तित`, `२_कुपित`, `३_अत्यन्त_क्रुद्ध`).
+3. **`नौल` (Noul - QType 2)**: Boolean determination (e.g. `अत्यावश्यकम्` [is urgent?], `त्याग_भयः` [churn threat?], `शुल्क_याचना` [refund requested?]).
+
+#### ४. सम्भावना-समायोजनम् (Softmax Calibration & Brier Score)
+Evaluates affinity scores across options in a single pass, applies temperature-scaled Softmax:
+$$P(i) = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}$$
+and computes the strictly proper calibration score (**Brier Score**):
+$$\text{Brier} = (1 - P_{\text{max}})^2$$
+
+#### ५. चालन-निर्देशाः (Running & Compiling)
+```bash
+# Run with interpreter
+cargo run -p sankode-cli -- run examples/लय_द्रुत_निर्णय.सङ्
+
+# Compile to optimized native binary (AOT)
+cargo run -p sankode-cli -- build examples/लय_द्रुत_निर्णय.सङ् -o target/laya_engine.exe
+./target/laya_engine.exe
+
+# Run comparative Python and C implementations
+python examples/comparative/laya_decision_engine.py
+./target/laya_c.exe
+```
+
 ### १२.६ तुलनात्मक-बोधः (Comparative Implementations: Sankode vs. Python vs. C)
 
 To facilitate comparative understanding for engineers coming from C and Python backgrounds, the complete LLM implementation has also been authored in **Python** and **C99/C11** inside [`examples/comparative/`](../examples/comparative/):

@@ -81,10 +81,19 @@ cargo run -p sankode-cli -- build examples/शाकुन्तल_ऋजु_�
 # Or execute with AOT native compilation on the fly:
 cargo run -p sankode-cli -- run --native examples/शाकुन्तल_ऋजु_प्रतिरूप.सङ्
 
+# Run the Laya Fast System 1 Decision Engine (sub-ms script routing, typed decisions, calibration)
+# Inspired by NandhaKishorM/laya (https://github.com/NandhaKishorM/laya)
+cargo run -p sankode-cli -- run examples/लय_द्रुत_निर्णय.सङ्
+
+# Compile Laya Decision Engine to an optimized native AOT binary:
+cargo run -p sankode-cli -- build examples/लय_द्रुत_निर्णय.सङ् -o target/laya_engine.exe
+./target/laya_engine.exe
+
 # Run the full-text Abhijnanasakuntalam LLM (file corpus, save/load weights, inference)
 cargo run -p sankode-cli -- run examples/शाकुन्तल_सम्पूर्ण_प्रतिरूप.सङ्
 
 # Run the Python comparative equivalents
+python examples/comparative/laya_decision_engine.py
 python examples/comparative/shakuntala_relu_llm.py
 python examples/comparative/shakuntala_llm.py
 
@@ -130,8 +139,11 @@ sankode/
 └── examples/
     ├── नमस्ते_जगत्.सङ्     # Hello World in pure Devanagari
     ├── फिबोनाची.सङ्         # Recursive Fibonacci in pure Devanagari
-    ├── comparative/             # Comparative LLM implementations
-    │   ├── README.md            # Paradigm comparison matrix (Sankode vs Python vs C)
+    ├── लय_द्रुत_निर्णय.सङ्   # Laya Fast System 1 Decision Engine (Routing, typed decisions, calibration)
+    ├── comparative/             # Comparative implementations (Sankode vs Python vs C)
+    │   ├── README.md            # Paradigm comparison matrix
+    │   ├── laya_decision_engine.py # Python Laya System 1 equivalent
+    │   ├── laya_decision_engine.c  # C99/C11 Laya System 1 equivalent
     │   ├── shakuntala_llm.py    # Type-annotated Python Bigram equivalent
     │   ├── shakuntala_llm.c     # Standalone C99/C11 Bigram equivalent
     │   ├── shakuntala_relu_llm.py # Python Multi-Layer Perceptron with ReLU
